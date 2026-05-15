@@ -10,7 +10,7 @@ from datetime import datetime
 import re
 import warnings
 
-# Apenas suprimir avisos de futuras alterações (não todos os warnings)
+# Apenas suprimir avisos de futuras alterações (não todos)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ============================================================
@@ -29,8 +29,9 @@ st.set_page_config(
 if "tema" not in st.session_state:
     st.session_state.tema = "claro"
 
+# Atualiza template do Plotly conforme o tema
 if st.session_state.tema == "claro":
-    COR_FUNDO = "#F4F6F9"
+    COR_FUNDO = "#F8FAFC"
     COR_CARD = "#FFFFFF"
     COR_TEXTO = "#1E293B"
     COR_BORDA = "#E2E8F0"
@@ -39,6 +40,7 @@ if st.session_state.tema == "claro":
     COR_SUCESSO = "#16A34A"
     COR_ALERTA = "#DC2626"
     COR_ATENCAO = "#D97706"
+    PLOTLY_TEMPLATE = "plotly_white"
 else:
     COR_FUNDO = "#0B0F19"
     COR_CARD = "#111827"
@@ -49,6 +51,7 @@ else:
     COR_SUCESSO = "#34D399"
     COR_ALERTA = "#F87171"
     COR_ATENCAO = "#FBBF24"
+    PLOTLY_TEMPLATE = "plotly_dark"
 
 # ============================================================
 # CSS PERSONALIZADO
@@ -61,16 +64,15 @@ st.markdown(f"""
         font-family: 'Inter', sans-serif;
     }}
     .block-container {{
-        padding-top: 1rem;
-        padding-bottom: 1.5rem;
+        padding: 1rem 1.5rem;
     }}
     .kpi-card {{
         background: {COR_CARD};
         border-left: 4px solid {COR_SECUNDARIA};
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }}
     .kpi-title {{
         font-size: 0.7rem;
@@ -86,9 +88,10 @@ st.markdown(f"""
     }}
     .badge {{
         padding: 2px 8px;
-        border-radius: 4px;
+        border-radius: 20px;
         font-weight: 600;
         font-size: 0.7rem;
+        display: inline-block;
     }}
     .badge-low {{ background-color: rgba(22, 163, 74, 0.1); color: #16A34A; }}
     .badge-mid {{ background-color: rgba(217, 119, 6, 0.1); color: #D97706; }}
@@ -101,12 +104,12 @@ st.markdown(f"""
 # ============================================================
 def fmt_brl(valor):
     if pd.isna(valor) or valor == 0:
-        return "R$ 0,00"
+        return "R$ 0"
     if valor >= 1_000_000_000:
-        return f"R$ {valor/1_000_000_000:.2f} Bi".replace(".", ",")
+        return f"R$ {valor/1_000_000_000:.1f}B".replace(".", ",")
     if valor >= 1_000_000:
-        return f"R$ {valor/1_000_000:.2f} Mi".replace(".", ",")
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"R$ {valor/1_000_000:.1f}M".replace(".", ",")
+    return f"R$ {valor:,.0f}".replace(",", ".")
 
 def fmt_num(valor):
     if pd.isna(valor):
@@ -161,9 +164,12 @@ def calcular_pareto(df, coluna):
     df_sorted['percentual_acumulado'] = (df_sorted[coluna].cumsum() / total) * 100
     return df_sorted
 
-def aplicar_layout_padrao(fig):
+def aplicar_layout_padrao(fig, height=450):
+    """Aplica layout padronizado a todos os gráficos"""
     fig.update_layout(
-        margin=dict(l=40, r=40, t=40, b=40),
+        template=PLOTLY_TEMPLATE,
+        height=height,
+        margin=dict(l=40, r=40, t=50, b=40),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color=COR_TEXTO, family="Inter"),
@@ -188,7 +194,7 @@ def analise_sazonalidade(df):
                  title='Média de Volume por Mês (com variação)',
                  labels={'mes_nome': 'Mês', 'mean': 'Volume Médio (R$)'},
                  color='mean', color_continuous_scale='Blues')
-    return aplicar_layout_padrao(fig)
+    return aplicar_layout_padrao(fig, height=400)
 
 @st.cache_data
 def matriz_correlacao(df):
@@ -199,7 +205,7 @@ def matriz_correlacao(df):
     fig = px.imshow(corr, text_auto=True, aspect='auto', zmin=-1, zmax=1,
                     title='Matriz de Correlação entre Indicadores',
                     color_continuous_scale='RdBu')
-    return aplicar_layout_padrao(fig)
+    return aplicar_layout_padrao(fig, height=400)
 
 @st.cache_data
 def boxplot_outliers(df, col_banco):
@@ -210,7 +216,7 @@ def boxplot_outliers(df, col_banco):
                  labels={col_banco: 'Instituição', 'numero_operacoes': 'Operações'},
                  color=col_banco)
     fig.update_layout(showlegend=False)
-    return aplicar_layout_padrao(fig)
+    return aplicar_layout_padrao(fig, height=450)
 
 @st.cache_data
 def treemap_cruzado(df):
@@ -224,7 +230,7 @@ def treemap_cruzado(df):
                      title='Ticket Médio por Região e Tipo de Banco',
                      color_continuous_scale='Blues',
                      hover_data={'ticket_medio': ':,.2f'})
-    return aplicar_layout_padrao(fig)
+    return aplicar_layout_padrao(fig, height=500)
 
 @st.cache_data
 def clusterizar_bancos(df, col_banco):
@@ -250,7 +256,7 @@ def clusterizar_bancos(df, col_banco):
                      hover_name=col_banco,
                      title='Agrupamento de Instituições por Comportamento (K-Means)',
                      labels={'numero_operacoes': 'Operações', 'ticket_medio': 'Ticket Médio (R$)'})
-    return aplicar_layout_padrao(fig), cluster_data
+    return aplicar_layout_padrao(fig, height=500), cluster_data
 
 @st.cache_data
 def comparativo_anual(df):
@@ -263,7 +269,7 @@ def comparativo_anual(df):
                   title='Comparativo Ano a Ano (YoY)',
                   labels={'mes': 'Mês', 'volume_operacoes': 'Volume (R$)', 'ano': 'Ano'},
                   markers=True)
-    return aplicar_layout_padrao(fig)
+    return aplicar_layout_padrao(fig, height=400)
 
 # ============================================================
 # CARREGAMENTO DE DADOS (COM TRATAMENTO DE EXCEÇÕES ESPECÍFICAS)
@@ -303,11 +309,11 @@ with st.sidebar:
     st.markdown("### Painel de Controle")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        if st.button("☀️ Modo Claro", use_container_width=True):
+        if st.button("☀️ Claro", use_container_width=True):
             st.session_state.tema = "claro"
             st.rerun()
     with col_t2:
-        if st.button("🌙 Modo Escuro", use_container_width=True):
+        if st.button("🌙 Escuro", use_container_width=True):
             st.session_state.tema = "escuro"
             st.rerun()
     st.markdown("---")
@@ -361,7 +367,7 @@ with col4:
     st.markdown(f'<div class="kpi-card"><div class="kpi-title">Instituições Atuantes</div><div class="kpi-value">{fmt_num(num_bancos)}</div></div>', unsafe_allow_html=True)
 
 # ============================================================
-# ABAS DE NAVEGAÇÃO
+# ABAS DE NAVEGAÇÃO (USANDO COLUNAS PARA MELHOR ESPAÇAMENTO)
 # ============================================================
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📈 Evolução e Projeções",
@@ -372,7 +378,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Conclusões e Exportação"
 ])
 
-# ==================== TAB 1 ====================
+# -------------------- TAB 1 --------------------
 with tab1:
     evolucao = df_filtrado.groupby("data_base").agg({
         "volume_operacoes": "sum",
@@ -387,7 +393,7 @@ with tab1:
         fig_ev = go.Figure()
         fig_ev.add_trace(go.Scatter(x=evolucao["data_base"], y=evolucao["volume_operacoes"], mode="lines+markers", name="Volume mensal", line=dict(color=COR_SECUNDARIA, width=2)))
         fig_ev.add_trace(go.Scatter(x=evolucao["data_base"], y=evolucao["media_movel"], mode="lines", name="Média móvel (3 meses)", line=dict(color=COR_ATENCAO, dash="dash")))
-        st.plotly_chart(aplicar_layout_padrao(fig_ev), use_container_width=True)
+        st.plotly_chart(aplicar_layout_padrao(fig_ev, height=400), use_container_width=True)
     with col_dir:
         st.markdown("### Variação Mensal")
         cresc_tabela = evolucao[["data_base", "crescimento"]].dropna().tail(5).copy()
@@ -408,7 +414,7 @@ with tab1:
         fig_prev = go.Figure()
         fig_prev.add_trace(go.Scatter(x=evolucao["data_base"], y=evolucao["volume_operacoes"], name="Realizado", line=dict(color=COR_SECUNDARIA, width=2)))
         fig_prev.add_trace(go.Scatter(x=datas_futuras, y=previsao, name="Projeção", line=dict(color=COR_ATENCAO, dash="dot")))
-        st.plotly_chart(aplicar_layout_padrao(fig_prev), use_container_width=True)
+        st.plotly_chart(aplicar_layout_padrao(fig_prev, height=400), use_container_width=True)
 
     st.markdown("### Sazonalidade")
     fig_saz = analise_sazonalidade(df_filtrado)
@@ -418,7 +424,7 @@ with tab1:
     fig_yoy = comparativo_anual(df_filtrado)
     st.plotly_chart(fig_yoy, use_container_width=True)
 
-# ==================== TAB 2 ====================
+# -------------------- TAB 2 --------------------
 with tab2:
     col_banco = "nome_conglomerado_financeiro"
     market = df_filtrado.groupby(col_banco)["numero_operacoes"].sum().sort_values(ascending=False).reset_index()
@@ -429,7 +435,7 @@ with tab2:
         hhi = calcular_hhi(market, "numero_operacoes")
         classificacao, classe_css = interpretar_hhi(hhi)
         st.markdown(f"""
-        <div style="background:{COR_CARD}; border:1px solid {COR_BORDA}; border-radius:8px; padding:20px;">
+        <div style="background:{COR_CARD}; border:1px solid {COR_BORDA}; border-radius:12px; padding:1.2rem;">
             <p style="margin:0; color:gray;">Índice Herfindahl-Hirschman</p>
             <h2 style="margin:5px 0 10px; font-size:2rem;">{hhi:.0f}</h2>
             <span class="badge {classe_css}">{classificacao}</span>
@@ -442,7 +448,7 @@ with tab2:
         fig_pareto.add_trace(go.Bar(x=pareto_data[col_banco], y=pareto_data["numero_operacoes"], name="Contratos", marker_color=COR_SECUNDARIA))
         fig_pareto.add_trace(go.Scatter(x=pareto_data[col_banco], y=pareto_data["percentual_acumulado"], name="% Acumulado", yaxis="y2", mode="lines+markers", line=dict(color=COR_ALERTA, width=2)))
         fig_pareto.update_layout(yaxis2=dict(overlaying="y", side="right", range=[0, 105], showgrid=False))
-        st.plotly_chart(aplicar_layout_padrao(fig_pareto), use_container_width=True)
+        st.plotly_chart(aplicar_layout_padrao(fig_pareto, height=400), use_container_width=True)
 
     st.markdown("### Ranking com Participação")
     ranking = market.head(15).copy()
@@ -456,7 +462,7 @@ with tab2:
     fig_corr = matriz_correlacao(df_filtrado)
     st.plotly_chart(fig_corr, use_container_width=True)
 
-# ==================== TAB 3 ====================
+# -------------------- TAB 3 --------------------
 with tab3:
     col_r1, col_r2 = st.columns(2)
     with col_r1:
@@ -465,13 +471,14 @@ with tab3:
         fig_pie = px.pie(reg_data, names="regiao", values="volume_operacoes", hole=0.5,
                          title="Distribuição Regional do Volume",
                          color_discrete_sequence=[COR_SECUNDARIA, COR_ATENCAO, COR_SUCESSO, COR_ALERTA, "#64748B"])
-        st.plotly_chart(aplicar_layout_padrao(fig_pie), use_container_width=True)
+        st.plotly_chart(aplicar_layout_padrao(fig_pie, height=400), use_container_width=True)
     with col_r2:
         st.markdown("### Evolução Regional (Heatmap)")
         heat = df_filtrado.groupby(["regiao", df_filtrado["data_base"].dt.strftime("%m/%Y")])["volume_operacoes"].sum().reset_index()
         pivot = heat.pivot(index="regiao", columns="data_base", values="volume_operacoes") / 1_000_000
         fig_heat = px.imshow(pivot, aspect="auto", text_auto=".1f", color_continuous_scale="Blues")
-        st.plotly_chart(aplicar_layout_padrao(fig_heat), use_container_width=True)
+        fig_heat.update_layout(height=400)
+        st.plotly_chart(aplicar_layout_padrao(fig_heat, height=400), use_container_width=True)
 
     st.markdown("### Top 3 Instituições por Estado")
     uf_banco = df_filtrado.groupby(["unidade_federacao", col_banco])["numero_operacoes"].sum().reset_index()
@@ -491,7 +498,7 @@ with tab3:
     fig_out = boxplot_outliers(df_filtrado, col_banco)
     st.plotly_chart(fig_out, use_container_width=True)
 
-# ==================== TAB 4 ====================
+# -------------------- TAB 4 --------------------
 with tab4:
     st.markdown("### Dispersão por Segmento")
     dispersao = df_filtrado.groupby(col_banco).agg({
@@ -506,7 +513,7 @@ with tab4:
                           labels={"numero_operacoes": "Operações", "ticket_medio": "Ticket Médio (R$)"},
                           color_discrete_map={"Banco Digital": "#10B981", "Banco Tradicional": "#2563EB",
                                               "Banco de Investimento": "#D97706", "Outras Instituições": "#64748B"})
-    st.plotly_chart(aplicar_layout_padrao(fig_disp), use_container_width=True)
+    st.plotly_chart(aplicar_layout_padrao(fig_disp, height=500), use_container_width=True)
 
     st.markdown("### Comparativo: Digital vs Tradicional")
     comp = df_filtrado.groupby("tipo_banco").agg({
@@ -519,12 +526,12 @@ with tab4:
     col_c1, col_c2 = st.columns(2)
     with col_c1:
         fig_bar = px.bar(comp, x="tipo_banco", y="numero_operacoes", title="Operações por Segmento", color="tipo_banco", text_auto=".0f")
-        st.plotly_chart(aplicar_layout_padrao(fig_bar), use_container_width=True)
+        st.plotly_chart(aplicar_layout_padrao(fig_bar, height=400), use_container_width=True)
     with col_c2:
         fig_tick = px.bar(comp, x="tipo_banco", y="ticket_medio", title="Ticket Médio por Segmento", color="tipo_banco", text_auto=".2s")
-        st.plotly_chart(aplicar_layout_padrao(fig_tick), use_container_width=True)
+        st.plotly_chart(aplicar_layout_padrao(fig_tick, height=400), use_container_width=True)
 
-# ==================== TAB 5 ====================
+# -------------------- TAB 5 --------------------
 with tab5:
     st.markdown("### Agrupamento de Instituições por Comportamento")
     st.caption("Algoritmo K-Means agrupa bancos com perfil semelhante (volume x ticket médio)")
@@ -538,7 +545,7 @@ with tab5:
     else:
         st.info("Dados insuficientes para realizar o agrupamento (necessário mais de 2 instituições com operações relevantes).")
 
-# ==================== TAB 6 ====================
+# -------------------- TAB 6 --------------------
 with tab6:
     st.markdown("### Principais Conclusões")
     crescimento_medio = evolucao["crescimento"].mean() if 'evolucao' in locals() else 0
@@ -560,7 +567,7 @@ with tab6:
         else:
             st.success("✅ **Mercado Competitivo:** Baixo risco de concentração.")
 
-    # Insight de sazonalidade
+    # Sazonalidade
     df_saz = df_filtrado.copy()
     df_saz['mes'] = df_filtrado['data_base'].dt.month
     mes_pico = df_saz.groupby('mes')['volume_operacoes'].sum().idxmax()
