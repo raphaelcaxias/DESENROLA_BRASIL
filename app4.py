@@ -6,85 +6,398 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # ============================================================
-# CONFIGURAÇÃO
+# CONFIGURAÇÃO DA PÁGINA
 # ============================================================
 st.set_page_config(
-    page_title="Desenrola Brasil - Análise de Renegociação de Dívidas",
+    page_title="Desenrola Brasil - Programa de Renegociação de Dívidas",
     page_icon="🏦",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ============================================================
-# CORES BANCÁRIAS
+# INICIALIZAÇÃO DO TEMA (Dark/Light Mode)
 # ============================================================
-COR_PRIMARIA = "#0A2540"
-COR_SECUNDARIA = "#0066CC"
-COR_DESTAQUE = "#00A86B"
-COR_ALERTA = "#FF6B35"
-COR_FUNDO = "#F8FAFC"
-COR_TEXTO = "#1E293B"
-COR_SUBTEXTO = "#64748B"
+if 'tema' not in st.session_state:
+    st.session_state.tema = 'claro'
+
+def alternar_tema():
+    st.session_state.tema = 'escuro' if st.session_state.tema == 'claro' else 'claro'
+
+# Cores por tema
+if st.session_state.tema == 'claro':
+    COR_PRIMARIA = "#00A86B"      # Verde governo
+    COR_SECUNDARIA = "#0052CC"    # Azul confiança
+    COR_DESTAQUE = "#FFB800"      # Dourado
+    COR_ALERTA = "#FF6B35"        # Laranja
+    COR_FUNDO = "#F8FAFC"         # Fundo claro
+    COR_CARD = "#FFFFFF"          # Card branco
+    COR_TEXTO = "#1E293B"         # Texto escuro
+    COR_SUBTEXTO = "#64748B"      # Texto secundário
+    COR_BORDA = "#E2E8F0"         # Borda clara
+else:
+    COR_PRIMARIA = "#00C878"      # Verde mais claro
+    COR_SECUNDARIA = "#3B82F6"    # Azul mais claro
+    COR_DESTAQUE = "#FBBF24"      # Dourado claro
+    COR_ALERTA = "#FF8C42"        # Laranja claro
+    COR_FUNDO = "#0F172A"         # Fundo escuro
+    COR_CARD = "#1E293B"          # Card escuro
+    COR_TEXTO = "#F1F5F9"         # Texto claro
+    COR_SUBTEXTO = "#94A3B8"      # Texto secundário claro
+    COR_BORDA = "#334155"         # Borda escura
 
 # ============================================================
-# CSS
+# CSS PREMIUM
 # ============================================================
 st.markdown(f"""
 <style>
-.stApp {{ background: {COR_FUNDO} !important; }}
-.block-container {{ padding: 2rem 2.5rem !important; max-width: 1400px !important; }}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-.page-header {{
+* {{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}}
+
+html, body, .stApp {{
+    background: {COR_FUNDO} !important;
+    font-family: 'Inter', sans-serif !important;
+    color: {COR_TEXTO} !important;
+}}
+
+.block-container {{
+    padding: 1.5rem 2rem !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+}}
+
+/* ===== HEADER PREMIUM ===== */
+.main-header {{
     background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA});
+    border-radius: 20px;
     padding: 1.8rem 2rem;
-    border-radius: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
 }}
-.page-header h1 {{ font-size: 32px; font-weight: 700; color: white; margin: 0 0 8px 0; }}
-.page-header p {{ color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }}
-.header-badges {{ display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }}
-.header-badge {{ background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: white; font-weight: 500; }}
 
-.kpi-grid {{ display: flex; gap: 20px; margin-bottom: 32px; flex-wrap: wrap; }}
+.main-header::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+}}
+
+.main-header h1 {{
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: white;
+    margin: 0;
+    letter-spacing: -0.02em;
+}}
+
+.main-header p {{
+    color: rgba(255,255,255,0.9);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}}
+
+.header-badges {{
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}}
+
+.header-badge {{
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+}}
+
+/* ===== CARDS GLASSMORPHISM ===== */
+.glass-card {{
+    background: {COR_CARD};
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 1px solid {COR_BORDA};
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+    transition: all 0.3s ease;
+}}
+
+.glass-card:hover {{
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.02);
+}}
+
+/* ===== KPI CARDS ===== */
+.kpi-grid {{
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}}
+
 .kpi-card {{
-    flex: 1; min-width: 180px; background: white; border-radius: 12px;
-    padding: 24px 20px; text-align: center; border: 1px solid #E2E8F0;
-    border-bottom: 3px solid {COR_SECUNDARIA};
-    transition: transform 0.2s;
+    flex: 1;
+    min-width: 200px;
+    background: {COR_CARD};
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 1px solid {COR_BORDA};
+    border-bottom: 3px solid {COR_PRIMARIA};
+    transition: all 0.3s ease;
 }}
-.kpi-card:hover {{ transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
-.kpi-label {{ font-size: 12px; text-transform: uppercase; color: {COR_SUBTEXTO}; font-weight: 600; }}
-.kpi-value {{ font-size: 32px; font-weight: 800; color: {COR_PRIMARIA}; margin: 8px 0; }}
-.kpi-sub {{ font-size: 11px; color: {COR_SUBTEXTO}; }}
 
-.info-card {{
-    background: white; border-radius: 12px; padding: 16px; border: 1px solid #E2E8F0; border-left: 4px solid {COR_DESTAQUE};
+.kpi-card:hover {{
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
 }}
-.insight-card {{ background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #E2E8F0; border-left: 4px solid {COR_DESTAQUE}; }}
-.insight-title {{ font-size: 13px; font-weight: 700; color: {COR_SECUNDARIA}; text-transform: uppercase; }}
-.insight-value {{ font-size: 24px; font-weight: 800; color: {COR_PRIMARIA}; margin: 10px 0; }}
-.insight-text {{ font-size: 13px; color: {COR_SUBTEXTO}; }}
 
-.section-header {{ display: flex; align-items: center; justify-content: space-between; margin: 32px 0 20px 0; border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; }}
-.section-header h2 {{ font-size: 20px; font-weight: 700; color: {COR_PRIMARIA}; margin: 0; }}
-.section-tag {{ background: #E8F4FD; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: {COR_SECUNDARIA}; font-weight: 600; }}
+.kpi-icon {{
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+}}
 
-.footer {{ text-align: center; padding: 30px 0 20px; margin-top: 40px; border-top: 1px solid #E2E8F0; color: {COR_SUBTEXTO}; font-size: 12px; }}
-.footer-disclaimer {{ font-size: 11px; color: #94A3B8; margin-top: 8px; }}
+.kpi-label {{
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: {COR_SUBTEXTO};
+}}
+
+.kpi-value {{
+    font-size: 2rem;
+    font-weight: 800;
+    color: {COR_TEXTO};
+    margin: 0.5rem 0;
+}}
+
+.kpi-sub {{
+    font-size: 0.7rem;
+    color: {COR_SUBTEXTO};
+}}
+
+/* ===== SEÇÕES ===== */
+.section-header {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 2rem 0 1.25rem 0;
+    border-bottom: 2px solid {COR_BORDA};
+    padding-bottom: 0.75rem;
+}}
+
+.section-header h2 {{
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: {COR_TEXTO};
+    margin: 0;
+}}
+
+.section-badge {{
+    background: {COR_PRIMARIA};
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}}
+
+/* ===== INSIGHT CARD ===== */
+.insight-card {{
+    background: {COR_CARD};
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid {COR_DESTAQUE};
+    transition: all 0.3s ease;
+}}
+
+.insight-card:hover {{
+    transform: translateX(4px);
+}}
+
+.insight-title {{
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: {COR_SECUNDARIA};
+}}
+
+.insight-value {{
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: {COR_TEXTO};
+    margin: 0.5rem 0;
+}}
+
+.insight-text {{
+    font-size: 0.8rem;
+    color: {COR_SUBTEXTO};
+    line-height: 1.5;
+}}
+
+/* ===== SIDEBAR ===== */
+section[data-testid="stSidebar"] {{
+    background: {COR_CARD} !important;
+    border-right: 1px solid {COR_BORDA} !important;
+}}
+
+section[data-testid="stSidebar"] .stSelectbox label,
+section[data-testid="stSidebar"] .stMultiSelect label {{
+    font-weight: 600;
+    color: {COR_TEXTO} !important;
+}}
+
+/* ===== TABELAS ===== */
+.stDataFrame {{
+    border-radius: 16px !important;
+    overflow: hidden;
+}}
+
+[data-testid="stDataFrame"] table {{
+    border-collapse: collapse;
+}}
+
+[data-testid="stDataFrame"] th {{
+    background: {COR_PRIMARIA} !important;
+    color: white !important;
+    font-weight: 600 !important;
+    padding: 12px !important;
+}}
+
+[data-testid="stDataFrame"] td {{
+    padding: 10px !important;
+    border-bottom: 1px solid {COR_BORDA} !important;
+}}
+
+/* ===== BOTÕES ===== */
+.stButton > button {{
+    background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA}) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 0.6rem 1.2rem !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    width: 100% !important;
+}}
+
+.stButton > button:hover {{
+    transform: scale(1.02);
+    opacity: 0.95;
+}}
+
+/* ===== TEMA TOGGLE ===== */
+.theme-toggle {{
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: {COR_BORDA};
+    padding: 0.25rem;
+    border-radius: 40px;
+    width: fit-content;
+    cursor: pointer;
+}}
+
+.theme-option {{
+    padding: 0.25rem 0.75rem;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}}
+
+.theme-option.active {{
+    background: {COR_PRIMARIA};
+    color: white;
+}}
+
+/* ===== FOOTER ===== */
+.footer {{
+    text-align: center;
+    padding: 2rem 0 1rem;
+    margin-top: 2rem;
+    border-top: 1px solid {COR_BORDA};
+    font-size: 0.7rem;
+    color: {COR_SUBTEXTO};
+}}
+
+.footer-disclaimer {{
+    font-size: 0.65rem;
+    color: {COR_SUBTEXTO};
+    margin-top: 0.5rem;
+}}
+
+/* ===== RESPONSIVO ===== */
+@media (max-width: 768px) {{
+    .block-container {{
+        padding: 1rem !important;
+    }}
+    .kpi-value {{
+        font-size: 1.5rem;
+    }}
+    .main-header h1 {{
+        font-size: 1.5rem;
+    }}
+}}
+
+/* ===== PLOTLY ===== */
+.js-plotly-plot .plotly .main-svg {{
+    border-radius: 16px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# HEADER
+# BOTÃO DE TEMA NA SIDEBAR
+# ============================================================
+with st.sidebar:
+    st.markdown(f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 1.2rem; font-weight: 700;">🏦 Desenrola</span>
+        <div class="theme-toggle" onclick="window.location.reload()">
+            <span class="theme-option {'active' if st.session_state.tema == 'claro' else ''}">☀️</span>
+            <span class="theme-option {'active' if st.session_state.tema == 'escuro' else ''}">🌙</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Recarregar para aplicar tema
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("☀️ Claro", use_container_width=True):
+            st.session_state.tema = 'claro'
+            st.rerun()
+    with col2:
+        if st.button("🌙 Escuro", use_container_width=True):
+            st.session_state.tema = 'escuro'
+            st.rerun()
+    
+    st.markdown("---")
+
+# ============================================================
+# HEADER PREMIUM
 # ============================================================
 st.markdown(f"""
-<div class="page-header">
+<div class="main-header">
     <h1>🏦 Desenrola Brasil</h1>
     <p>Programa de Renegociação de Dívidas - Análise de dados oficiais do Banco Central do Brasil</p>
     <div class="header-badges">
         <span class="header-badge">🏛️ Fonte Oficial</span>
         <span class="header-badge">📊 Dados Abertos</span>
-        <span class="header-badge">✅ SCR - Sistema de Informações de Crédito</span>
+        <span class="header-badge">✅ SCR</span>
         <span class="header-badge">📋 Lei nº 14.690/2023</span>
     </div>
 </div>
@@ -163,14 +476,14 @@ def carregar_dados():
     return None, None
 
 # ============================================================
-# SIDEBAR
+# FILTROS
 # ============================================================
-with st.sidebar:
-    st.markdown("### 🎯 Filtros")
-    
-    df, encoding = carregar_dados()
-    
-    if df is not None:
+df, encoding = carregar_dados()
+
+if df is not None:
+    with st.sidebar:
+        st.markdown("### 🎯 Filtros")
+        
         if 'tipo_desenrola' in df.columns:
             tipos = sorted(df['tipo_desenrola'].dropna().unique())
             tipo_filtro = st.multiselect("Tipo do Programa", tipos, default=tipos)
@@ -186,7 +499,7 @@ with st.sidebar:
         
         if 'nome_conglomerado_financeiro' in df.columns:
             bancos = sorted(df['nome_conglomerado_financeiro'].dropna().unique())
-            banco_filtro = st.multiselect("Instituição", bancos, default=[])
+            banco_filtro = st.multiselect("Instituição Financeira", bancos, default=[])
             if banco_filtro:
                 df_filtrado = df_filtrado[df_filtrado['nome_conglomerado_financeiro'].isin(banco_filtro)]
         
@@ -215,56 +528,64 @@ if df_filtrado is not None and len(df_filtrado) > 0:
     ticket_medio = total_volume / total_operacoes if total_operacoes > 0 else 0
     
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-label">💰 VOLUME RENEGOCIADO</div>
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-label">VOLUME RENEGOCIADO</div>
             <div class="kpi-value">{fmt_brl(total_volume)}</div>
             <div class="kpi-sub">total de dívidas renegociadas</div>
         </div>
         """, unsafe_allow_html=True)
+    
     with col2:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-label">📋 OPERAÇÕES</div>
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-label">OPERAÇÕES</div>
             <div class="kpi-value">{fmt_num(total_operacoes)}</div>
             <div class="kpi-sub">renegociações realizadas</div>
         </div>
         """, unsafe_allow_html=True)
+    
     with col3:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-label">🎫 TICKET MÉDIO</div>
+            <div class="kpi-icon">🎫</div>
+            <div class="kpi-label">TICKET MÉDIO</div>
             <div class="kpi-value">{fmt_brl(ticket_medio)}</div>
             <div class="kpi-sub">por operação</div>
         </div>
         """, unsafe_allow_html=True)
+    
     with col4:
         num_bancos = df_filtrado['nome_conglomerado_financeiro'].nunique() if 'nome_conglomerado_financeiro' in df_filtrado.columns else 0
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-label">🏛️ INSTITUIÇÕES</div>
+            <div class="kpi-icon">🏛️</div>
+            <div class="kpi-label">INSTITUIÇÕES</div>
             <div class="kpi-value">{fmt_num(num_bancos)}</div>
             <div class="kpi-sub">bancos participantes</div>
         </div>
         """, unsafe_allow_html=True)
     
-    # ===== ANÁLISE 1: HHI =====
+    # ===== ANÁLISE DE CONCENTRAÇÃO HHI =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
-            <h2>📊 Análise de Concentração de Mercado (HHI)</h2>
-            <span class="section-tag">Risco e Concorrência</span>
+            <h2>📊 Análise de Concentração de Mercado</h2>
+            <span class="section-badge">HHI</span>
         </div>
         """, unsafe_allow_html=True)
         
         hhi_valor = calcular_hhi(df_filtrado)
-        classificacao, cor = classificar_hhi(hhi_valor)
+        classificacao, cor_icon = classificar_hhi(hhi_valor)
         
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(f"""
-            <div class="info-card">
+            <div class="glass-card">
                 <div class="insight-title">🏦 ÍNDICE HHI</div>
                 <div class="insight-value">{hhi_valor:.0f}</div>
                 <div class="insight-text">Índice Herfindahl-Hirschman - Mede concentração de mercado</div>
@@ -272,19 +593,19 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             """, unsafe_allow_html=True)
         with col2:
             st.markdown(f"""
-            <div class="info-card">
+            <div class="glass-card">
                 <div class="insight-title">📈 CLASSIFICAÇÃO</div>
-                <div class="insight-value">{cor} {classificacao}</div>
+                <div class="insight-value">{cor_icon} {classificacao}</div>
                 <div class="insight-text">Mercado de renegociação de dívidas</div>
             </div>
             """, unsafe_allow_html=True)
     
-    # ===== ANÁLISE 2: Digitais vs Tradicionais =====
+    # ===== BANCOS DIGITAIS VS TRADICIONAIS =====
     if 'tipo_banco' in df_filtrado.columns and len(df_filtrado['tipo_banco'].unique()) > 0:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>📱 Bancos Digitais vs Tradicionais</h2>
-            <span class="section-tag">Segmentação de Mercado</span>
+            <span class="section-badge">Segmentação</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -296,28 +617,28 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         
         col1, col2 = st.columns(2)
         with col1:
-            fig_tipo_bar = px.bar(tipo_banco_data, x='tipo_banco', y='numero_operacoes',
+            fig_digital = px.bar(tipo_banco_data, x='tipo_banco', y='numero_operacoes',
                                   title='Operações por Tipo de Banco',
-                                  color='tipo_banco', 
-                                  color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'},
+                                  color='tipo_banco',
+                                  color_discrete_map={'digital': '#00A86B', 'tradicional': '#0052CC', 'outros': '#94A3B8'},
                                   text_auto='.0f')
-            fig_tipo_bar.update_layout(template="plotly_white", height=400)
-            st.plotly_chart(fig_tipo_bar, use_container_width=True)
+            fig_digital.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
+            st.plotly_chart(fig_digital, use_container_width=True)
         with col2:
-            fig_tipo_ticket = px.bar(tipo_banco_data, x='tipo_banco', y='ticket_medio',
-                                     title='Ticket Médio por Tipo de Banco (R$)',
-                                     color='tipo_banco',
-                                     color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'},
-                                     text_auto='.2s')
-            fig_tipo_ticket.update_layout(template="plotly_white", height=400)
-            st.plotly_chart(fig_tipo_ticket, use_container_width=True)
+            fig_ticket_digital = px.bar(tipo_banco_data, x='tipo_banco', y='ticket_medio',
+                                         title='Ticket Médio por Tipo de Banco (R$)',
+                                         color='tipo_banco',
+                                         color_discrete_map={'digital': '#00A86B', 'tradicional': '#0052CC', 'outros': '#94A3B8'},
+                                         text_auto='.2s')
+            fig_ticket_digital.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
+            st.plotly_chart(fig_ticket_digital, use_container_width=True)
     
-    # ===== ANÁLISE 3: Top 3 Bancos por Estado =====
+    # ===== LIDERANÇA REGIONAL =====
     if 'unidade_federacao' in df_filtrado.columns and 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>🗺️ Liderança Regional por Estado</h2>
-            <span class="section-tag">Top 3 Bancos por UF</span>
+            <span class="section-badge">Top 3 Bancos</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -335,12 +656,12 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             tabela_lideranca = top3_por_uf.pivot_table(index='unidade_federacao', columns='ranking', values='exibicao', aggfunc='first').reset_index()
             st.dataframe(tabela_lideranca, use_container_width=True, hide_index=True)
     
-    # ===== ANÁLISE 4: Evolução Mensal (CORRIGIDA - sem vline) =====
+    # ===== EVOLUÇÃO MENSAL =====
     if 'data_base' in df_filtrado.columns and len(df_filtrado['data_base'].dropna()) > 1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>📈 Evolução Mensal do Programa</h2>
-            <span class="section-tag">Série Temporal</span>
+            <span class="section-badge">Temporal</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -354,11 +675,13 @@ if df_filtrado is not None and len(df_filtrado) > 0:
                                markers=True, line_shape='linear')
         fig_evolucao.update_layout(template="plotly_white", height=450,
                                    xaxis_title="Mês", yaxis_title="Volume (R$)",
-                                   hovermode='x unified')
-        fig_evolucao.update_traces(line=dict(width=3, color=COR_SECUNDARIA), 
-                                   marker=dict(size=6, color=COR_PRIMARIA))
+                                   hovermode='x unified',
+                                   paper_bgcolor=COR_CARD,
+                                   font=dict(color=COR_TEXTO))
+        fig_evolucao.update_traces(line=dict(width=3, color=COR_PRIMARIA), 
+                                   marker=dict(size=6, color=COR_SECUNDARIA))
         
-        # Adicionar anotação manual em vez de vline
+        # Anotação do marco regulatório
         df_mp = evolucao[evolucao['data_base'] >= pd.Timestamp('2024-04-01')]
         if len(df_mp) > 0:
             fig_evolucao.add_annotation(
@@ -371,19 +694,19 @@ if df_filtrado is not None and len(df_filtrado) > 0:
                 arrowwidth=2,
                 arrowcolor=COR_ALERTA,
                 font=dict(size=10, color=COR_ALERTA),
-                bgcolor="white",
+                bgcolor=COR_CARD,
                 bordercolor=COR_ALERTA,
                 borderwidth=1
             )
         
         st.plotly_chart(fig_evolucao, use_container_width=True)
     
-    # ===== ANÁLISE 5: Gráfico de Dispersão =====
+    # ===== GRÁFICO DE DISPERSÃO =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>📊 Dispersão: Operações vs Ticket Médio</h2>
-            <span class="section-tag">Análise de Portfólio</span>
+            <span class="section-badge">Portfólio</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -401,11 +724,10 @@ if df_filtrado is not None and len(df_filtrado) > 0:
                                        color='tipo', size='numero_operacoes', hover_name='nome_conglomerado_financeiro',
                                        title='Relação entre Volume de Operações e Ticket Médio',
                                        labels={'numero_operacoes': 'Operações', 'ticket_medio': 'Ticket Médio (R$)'},
-                                       color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'})
-            fig_dispersao.update_layout(template="plotly_white", height=500)
+                                       color_discrete_map={'digital': COR_PRIMARIA, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'})
+            fig_dispersao.update_layout(template="plotly_white", height=500, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
             st.plotly_chart(fig_dispersao, use_container_width=True)
             
-            # Correlação manual
             x = dispersao_data['numero_operacoes'].values
             y = dispersao_data['ticket_medio'].values
             correlacao = np.corrcoef(x, y)[0, 1] if len(x) > 1 else 0
@@ -413,12 +735,12 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         else:
             st.info("Dados insuficientes para análise de dispersão (menos de 2 bancos com mais de 1000 operações)")
     
-    # ===== GRÁFICO: Por Tipo =====
+    # ===== ANÁLISE POR TIPO =====
     if 'tipo_desenrola' in df_filtrado.columns:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>📊 Análise por Tipo do Programa</h2>
-            <span class="section-tag">Distribuição</span>
+            <span class="section-badge">Distribuição</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -431,26 +753,26 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         col1, col2 = st.columns(2)
         with col1:
             fig_pie = px.pie(tipo_data, names='tipo_desenrola', values='numero_operacoes', hole=0.4,
-                            title='Distribuição de Operações', 
+                            title='Distribuição de Operações por Tipo',
                             color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE])
-            fig_pie.update_layout(template="plotly_white", height=420)
+            fig_pie.update_layout(template="plotly_white", height=420, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig_pie, use_container_width=True)
         with col2:
-            fig_ticket = px.bar(tipo_data, x='tipo_desenrola', y='ticket_medio',
-                               title='Ticket Médio por Tipo (R$)', 
+            fig_ticket_tipo = px.bar(tipo_data, x='tipo_desenrola', y='ticket_medio',
+                               title='Ticket Médio por Tipo (R$)',
                                color='tipo_desenrola',
-                               color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE], 
+                               color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE],
                                text_auto='.2s')
-            fig_ticket.update_layout(template="plotly_white", height=420)
-            st.plotly_chart(fig_ticket, use_container_width=True)
+            fig_ticket_tipo.update_layout(template="plotly_white", height=420, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
+            st.plotly_chart(fig_ticket_tipo, use_container_width=True)
     
-    # ===== GRÁFICO: Top Estados =====
+    # ===== RANKING ESTADOS =====
     if 'unidade_federacao' in df_filtrado.columns:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>🗺️ Ranking por Unidade da Federação</h2>
-            <span class="section-tag">Top 10</span>
+            <span class="section-badge">Top 10</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -463,17 +785,17 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         
         fig_uf = px.bar(uf_data, x='unidade_federacao', y='numero_operacoes', 
                         color='numero_operacoes',
-                        title='Operações por UF', 
+                        title='Operações por UF (Top 10)', 
                         color_continuous_scale='Blues')
-        fig_uf.update_layout(template="plotly_white", height=450)
+        fig_uf.update_layout(template="plotly_white", height=450, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
         st.plotly_chart(fig_uf, use_container_width=True)
     
-    # ===== GRÁFICO: Top Bancos =====
+    # ===== RANKING BANCOS =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""
+        st.markdown(f"""
         <div class="section-header">
             <h2>🏦 Top 10 Instituições Financeiras</h2>
-            <span class="section-tag">Ranking</span>
+            <span class="section-badge">Ranking</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -481,19 +803,19 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         banco_data.columns = ['Instituição', 'Operações']
         
         fig_banco = px.bar(banco_data, x='Operações', y='Instituição', orientation='h',
-                          title='Top 10 Instituições por Renegociações', 
+                          title='Top 10 Instituições por Renegociações',
                           color='Operações',
-                          color_continuous_scale='Viridis', 
+                          color_continuous_scale='Viridis',
                           text='Operações')
-        fig_banco.update_layout(template="plotly_white", height=500)
+        fig_banco.update_layout(template="plotly_white", height=500, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
         fig_banco.update_traces(texttemplate='%{text:,}', textposition='outside')
         st.plotly_chart(fig_banco, use_container_width=True)
     
     # ===== CONCLUSÃO =====
-    st.markdown("""
+    st.markdown(f"""
     <div class="section-header">
         <h2>📈 Conclusão</h2>
-        <span class="section-tag">Resumo Executivo</span>
+        <span class="section-badge">Resumo Executivo</span>
     </div>
     """, unsafe_allow_html=True)
     
@@ -501,7 +823,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
     uf_lider = df_filtrado.groupby('unidade_federacao')['volume_operacoes'].sum().idxmax() if 'unidade_federacao' in df_filtrado.columns and len(df_filtrado['unidade_federacao'].unique()) > 0 else "N/A"
     
     st.markdown(f"""
-    <div class="insight-card" style="background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA}); color: white; border: none;">
+    <div class="glass-card" style="background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA}); color: white; border: none;">
         <div class="insight-text" style="color: rgba(255,255,255,0.95);">
         O <strong>Programa Desenrola Brasil</strong> já renegociou <strong>{fmt_brl(total_volume)}</strong> em dívidas, 
         com <strong>{fmt_num(total_operacoes)} operações</strong>. <strong>{banco_lider}</strong> lidera as renegociações,
@@ -514,7 +836,10 @@ if df_filtrado is not None and len(df_filtrado) > 0:
     st.markdown("---")
     st.markdown("### 📥 Exportar Dados")
     
-    relatorio = f"""RELATÓRIO DESENROLA BRASIL
+    col1, col2, col3 = st.columns([1, 1, 2])
+    
+    with col1:
+        relatorio = f"""RELATÓRIO DESENROLA BRASIL
 Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
 VISÃO GERAL:
@@ -524,20 +849,24 @@ VISÃO GERAL:
 - Banco Líder: {banco_lider}
 - Estado Líder: {uf_lider}
 
-ANÁLISE DE CONCENTRAÇÃO (HHI):
-- Índice HHI: {hhi_valor:.0f}
-- Classificação: {classificacao}
-
 Fonte: Banco Central do Brasil (SCR/Desenrola)
 """
+        st.download_button("📝 Baixar Relatório (TXT)", relatorio, f"relatorio_desenrola_{datetime.now().strftime('%Y%m%d')}.txt", "text/csv")
     
-    st.download_button("📝 Baixar Relatório", relatorio, f"relatorio_desenrola_{datetime.now().strftime('%Y%m%d')}.txt", "text/plain")
+    with col2:
+        if df_filtrado is not None:
+            csv = df_filtrado.to_csv(index=False).encode('utf-8')
+            st.download_button("📊 Baixar Dados (CSV)", csv, f"dados_desenrola_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
     
+    # ===== FOOTER =====
     st.markdown(f"""
     <div class="footer">
         🏦 Desenrola Brasil · Fonte: Banco Central do Brasil (SCR)<br>
         Dashboard desenvolvido para portfólio de Análise de Dados
-        <div class="footer-disclaimer">⚠️ Dados de domínio público. Dashboard para fins de portfólio.</div>
+        <div class="footer-disclaimer">
+            ⚠️ Dados de domínio público. Dashboard para fins de portfólio.
+            <br>🔗 Fonte original: www.bcb.gov.br/estatisticas/scr
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
