@@ -4,7 +4,6 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-from scipy import stats
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -116,7 +115,7 @@ def calcular_hhi(data):
     """Calcula o Índice Herfindahl-Hirschman para concentração de mercado"""
     total = data['numero_operacoes'].sum()
     participacoes = (data['numero_operacoes'] / total) ** 2
-    hhi = participacoes.sum() * 10000  # Normalizado para 0-10000
+    hhi = participacoes.sum() * 10000
     return hhi
 
 def classificar_hhi(hhi):
@@ -157,7 +156,6 @@ def carregar_dados():
                 df['data_base'] = pd.to_datetime(df['data_base'].astype(str), format='%Y%m', errors='coerce')
                 df['ano_mes'] = df['data_base'].dt.strftime('%Y-%m')
             
-            # Classificação de bancos
             if 'nome_conglomerado_financeiro' in df.columns:
                 df['tipo_banco'] = df['nome_conglomerado_financeiro'].apply(classificar_banco)
             
@@ -252,7 +250,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         </div>
         """, unsafe_allow_html=True)
     
-    # ===== ANÁLISE 1: HHI (Concentração de Mercado) =====
+    # ===== ANÁLISE 1: HHI =====
     st.markdown("""
     <div class="section-header">
         <h2>📊 Análise de Concentração de Mercado (HHI)</h2>
@@ -282,7 +280,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             </div>
             """, unsafe_allow_html=True)
     
-    # ===== ANÁLISE 2: Bancos Digitais vs Tradicionais =====
+    # ===== ANÁLISE 2: Digitais vs Tradicionais =====
     if 'tipo_banco' in df_filtrado.columns:
         st.markdown("""
         <div class="section-header">
@@ -334,7 +332,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         tabela_lideranca = top3_por_uf.pivot_table(index='unidade_federacao', columns='ranking', values='exibicao', aggfunc='first').reset_index()
         st.dataframe(tabela_lideranca, use_container_width=True, hide_index=True)
     
-    # ===== ANÁLISE 4: Evolução Mensal com Marco Regulatório =====
+    # ===== ANÁLISE 4: Evolução com Marco Regulatório =====
     if 'data_base' in df_filtrado.columns:
         st.markdown("""
         <div class="section-header">
@@ -360,7 +358,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
                                    title="Volume Renegociado por Mês com Marco Regulatório")
         st.plotly_chart(fig_evolucao, use_container_width=True)
     
-    # ===== ANÁLISE 5: Gráfico de Dispersão (Operações x Ticket Médio) =====
+    # ===== ANÁLISE 5: Gráfico de Dispersão =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
         st.markdown("""
         <div class="section-header">
@@ -385,10 +383,13 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         fig_dispersao.update_layout(template="plotly_white", height=500)
         st.plotly_chart(fig_dispersao, use_container_width=True)
         
-        correlacao = dispersao_data['numero_operacoes'].corr(dispersao_data['ticket_medio'])
-        st.caption(f"📊 Correlação entre Operações e Ticket Médio: **{correlacao:.2f}** - {'Correlação positiva fraca' if correlacao > 0 else 'Correlação negativa' if correlacao < 0 else 'Sem correlação'}")
+        if len(dispersao_data) > 1:
+            x = dispersao_data['numero_operacoes'].values
+            y = dispersao_data['ticket_medio'].values
+            correlacao = np.corrcoef(x, y)[0, 1] if len(x) > 1 else 0
+            st.caption(f"📊 Correlação entre Operações e Ticket Médio: **{correlacao:.2f}** - {'Correlação positiva' if correlacao > 0.3 else 'Correlação negativa' if correlacao < -0.3 else 'Baixa correlação'}")
     
-    # ===== GRÁFICOS ADICIONAIS =====
+    # ===== GRÁFICO: Por Tipo =====
     if 'tipo_desenrola' in df_filtrado.columns:
         st.markdown("""
         <div class="section-header">
@@ -413,6 +414,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             fig_ticket.update_layout(template="plotly_white", height=420)
             st.plotly_chart(fig_ticket, use_container_width=True)
     
+    # ===== GRÁFICO: Top Estados =====
     if 'unidade_federacao' in df_filtrado.columns:
         st.markdown("""
         <div class="section-header">
@@ -430,6 +432,7 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         fig_uf.update_layout(template="plotly_white", height=450)
         st.plotly_chart(fig_uf, use_container_width=True)
     
+    # ===== GRÁFICO: Top Bancos =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
         st.markdown("""
         <div class="section-header">
@@ -500,4 +503,4 @@ Fonte: Banco Central do Brasil (SCR/Desenrola)
     """, unsafe_allow_html=True)
 
 else:
-    st.error("❌ Erro ao carregar os dados.")
+    st.error("❌ Erro ao carregar os dados. Verifique se o arquivo 'dados_desenrola.csv' está no repositório.")
