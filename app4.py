@@ -56,7 +56,7 @@ else:
     COR_GRID        = "rgba(255,255,255,0.06)"
 
 # ============================================================
-# CSS (mesmo design anterior, mantido)
+# CSS
 # ============================================================
 st.markdown(f"""
 <style>
@@ -103,7 +103,7 @@ html, body, .stApp {{
 """, unsafe_allow_html=True)
 
 # ============================================================
-# UTILITÁRIOS (todas as funções já testadas)
+# UTILITÁRIOS
 # ============================================================
 def fmt_brl(v):
     if pd.isna(v) or v == 0: return "R$ 0"
@@ -150,7 +150,11 @@ def interpretar_hhi(hhi):
 @st.cache_data
 def calcular_pareto(df, col):
     df_s = df.sort_values(col, ascending=False).reset_index(drop=True)
-    df_s["pct_acum"] = (df_s[col].cumsum() / df_s[col].sum())*100
+    total = df_s[col].sum()
+    if total > 0:
+        df_s["pct_acum"] = (df_s[col].cumsum() / total) * 100
+    else:
+        df_s["pct_acum"] = 0
     return df_s
 
 def layout_base(fig, height=450, showlegend=True):
@@ -203,8 +207,10 @@ def clusterizar_bancos(df, col_banco):
     def rotulo(c):
         alto_vol = rank_vol[c] == 1
         alto_ticket = rank_ticket[c] == 1
-        if alto_vol and not alto_ticket: return "Alto Volume / Baixo Ticket"
-        if not alto_vol and alto_ticket: return "Baixo Volume / Alto Ticket"
+        if alto_vol and not alto_ticket:
+            return "Alto Volume / Baixo Ticket"
+        if not alto_vol and alto_ticket:
+            return "Baixo Volume / Alto Ticket"
         return "Perfil Equilibrado"
     dados["cluster_nome"] = dados["cluster"].map(rotulo)
     fig = go.Figure()
@@ -337,12 +343,11 @@ if df_f.empty:
 col_banco = "nome_conglomerado_financeiro"
 
 # ============================================================
-# ==========  STORYTELLING EXECUTIVO (ANTES DAS ABAS) ==========
+# ==========  STORYTELLING EXECUTIVO (CORRIGIDO) ==========
 # ============================================================
 st.title("🏦 Desenrola Brasil – Painel Executivo")
 st.caption("Monitoramento de renegociação de dívidas – Fonte: Banco Central do Brasil (SCR)")
 
-# ── Bloco narrativo: fonte, metodologia e conclusões principais ──
 with st.container():
     col_origem, col_link = st.columns([3,1])
     with col_origem:
@@ -359,7 +364,7 @@ with st.container():
         </div>
         """, unsafe_allow_html=True)
 
-    # KPIs gerais (já calculados)
+    # KPIs gerais
     total_volume = df_f["volume_operacoes"].sum()
     total_ops = df_f["numero_operacoes"].sum()
     ticket_medio = total_volume / total_ops if total_ops > 0 else 0
@@ -375,15 +380,30 @@ with st.container():
     with col_k4:
         st.markdown(f'<div class="kpi-card"><div class="kpi-title">🏛️ Instituições</div><div class="kpi-value">{fmt_num(num_inst)}</div></div>', unsafe_allow_html=True)
 
-    # Principais conclusões executivas (calculadas de forma resumida)
+    # Cálculos para os insights executivos
+    reg_data = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
+    total_reg = reg_data["volume_operacoes"].sum()
+    reg_data["pct"] = (reg_data["volume_operacoes"] / total_reg * 100).round(1)
+    lider_regiao = reg_data.loc[reg_data["volume_operacoes"].idxmax()]
+
     market_hhi = df_f.groupby(col_banco)["numero_operacoes"].sum().reset_index()
+    total_contratos = market_hhi["numero_operacoes"].sum()
+    if total_contratos > 0:
+        lider_banco = market_hhi.loc[market_hhi["numero_operacoes"].idxmax(), col_banco]
+        part_banco = (market_hhi["numero_operacoes"].max() / total_contratos) * 100
+    else:
+        lider_banco = "N/A"
+        part_banco = 0
+
     hhi_val = calcular_hhi(market_hhi, "numero_operacoes")
     _, _, expl_hhi = interpretar_hhi(hhi_val)
 
-    reg_data = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
-    lider_regiao = reg_data.sort_values("volume_operacoes", ascending=False).iloc[0]
-    lider_banco = market_hhi.sort_values("numero_operacoes", ascending=False).iloc[0][col_banco]
-    part_banco = market_hhi.iloc[0]["numero_operacoes"] / market_hhi["numero_operacoes"].sum() * 100
+    evolucao_global = df_f.groupby("data_base")["volume_operacoes"].sum()
+    if len(evolucao_global) > 1:
+        cresc_medio = evolucao_global.pct_change().mean() * 100
+        tendencia = "Programa em expansão sustentada." if cresc_medio > 0 else "Sinal de perda de momentum, requer atenção."
+    else:
+        tendencia = "Dados insuficientes para calcular tendência."
 
     st.markdown("### 📌 Principais Conclusões (Resumo Executivo)")
     col_conc1, col_conc2 = st.columns(2)
@@ -406,7 +426,7 @@ with st.container():
         </div>
         <div class="insight-box">
             <div class="insight-label">📈 Tendência Recente</div>
-            <div class="insight-text">{'Programa em expansão sustentada.' if df_f.groupby("data_base")["volume_operacoes"].sum().pct_change().mean() > 0 else 'Sinal de perda de momentum, requer atenção.'}</div>
+            <div class="insight-text">{tendencia}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -414,7 +434,7 @@ with st.container():
     st.caption("👉 **Navegue pelas abas abaixo para explorar os gráficos interativos e análises detalhadas.**")
 
 # ============================================================
-# ABAS (todas as análises, iguais à versão anterior, mas garantindo interatividade)
+# ABAS (conteúdo completo igual à versão funcional anterior)
 # ============================================================
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📈 Evolução e Projeção",
@@ -425,46 +445,480 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Conclusões e Exportação"
 ])
 
-# (A partir daqui, o conteúdo de cada aba é exatamente o mesmo do código funcional anterior,
-#  garantindo que todos os gráficos interativos estejam disponíveis. Para não repetir todo o código,
-#  mantivemos a implementação já testada. Abaixo segue uma versão resumida, mas você pode inserir
-#  os blocos completos das abas conforme o código que já rodava perfeitamente.
-#  Como se trata de uma resposta extensa, colocaremos apenas a estrutura, mas o arquivo final entregue
-#  deve conter o código completo de cada aba. No chat, entregarei o script final com todas as abas preenchidas.)
-# ============================================================
-
-# Para fins de clareza, vamos colocar um placeholder indicando que as abas estão completas.
-# No arquivo final enviado, todas as abas estarão com o conteúdo integral.
-
+# -------------------------------------------------------------
+# TAB 1 – Evolução e Projeção
+# -------------------------------------------------------------
 with tab1:
-    st.markdown("#### 📈 Evolução do Volume e Projeção Holt-Winters")
-    # ... (código completo da aba 1 da versão funcional)
-    st.info("Gráficos interativos de evolução temporal, sazonalidade e projeção.")
+    evolucao = df_f.groupby("data_base").agg(
+        volume_operacoes=("volume_operacoes","sum"),
+        numero_operacoes=("numero_operacoes","sum")
+    ).reset_index()
+    evolucao["crescimento"]  = evolucao["volume_operacoes"].pct_change()*100
+    evolucao["media_movel3"] = evolucao["volume_operacoes"].rolling(3, min_periods=1).mean()
 
+    market_hhi = df_f.groupby(col_banco)["numero_operacoes"].sum().reset_index()
+    hhi_val2 = calcular_hhi(market_hhi, "numero_operacoes")
+    alertas = gerar_alertas(evolucao, hhi_val2, ticket_medio)
+
+    if alertas:
+        st.markdown("#### 🔔 Alertas Automáticos")
+        for tipo_alerta, titulo_al, msg_al in alertas:
+            fn = getattr(st, tipo_alerta, st.info)
+            fn(f"**{titulo_al}:** {msg_al}")
+
+    st.markdown("#### Histórico de Volume e Contratos")
+    fig_ev = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                           row_heights=[0.65, 0.35],
+                           vertical_spacing=0.08,
+                           subplot_titles=["Volume de Renegociação (R$)", "Número de Contratos"])
+    fig_ev.add_trace(go.Scatter(
+        x=evolucao["data_base"], y=evolucao["volume_operacoes"],
+        name="Volume Mensal", mode="lines+markers",
+        line=dict(color=COR_SECUNDARIA, width=2.5),
+        marker=dict(size=5)
+    ), row=1, col=1)
+    fig_ev.add_trace(go.Scatter(
+        x=evolucao["data_base"], y=evolucao["media_movel3"],
+        name="Média Móvel 3M", mode="lines",
+        line=dict(color=COR_ATENCAO, dash="dash", width=1.8)
+    ), row=1, col=1)
+    fig_ev.add_trace(go.Bar(
+        x=evolucao["data_base"], y=evolucao["numero_operacoes"],
+        name="Contratos", marker_color=COR_SECUNDARIA, opacity=0.6
+    ), row=2, col=1)
+    layout_base(fig_ev, height=500)
+    st.plotly_chart(fig_ev, use_container_width=True, config={'displayModeBar': True})
+
+    if len(evolucao) >= 4:
+        st.markdown("#### Projeção Holt-Winters (3 meses) — com intervalo de confiança 95%")
+        st.caption("Suavização exponencial com tendência – captura aceleração/desaceleração melhor que regressão linear.")
+        datas_fut, prev, lower, upper = projetar_holt_winters(
+            evolucao["volume_operacoes"], evolucao["data_base"]
+        )
+        if datas_fut is not None:
+            fig_prev = go.Figure()
+            fig_prev.add_trace(go.Scatter(
+                x=evolucao["data_base"], y=evolucao["volume_operacoes"],
+                name="Realizado", mode="lines+markers",
+                line=dict(color=COR_SECUNDARIA, width=2.5)
+            ))
+            fig_prev.add_trace(go.Scatter(
+                x=list(datas_fut)+list(datas_fut[::-1]),
+                y=list(upper)+list(lower[::-1]),
+                fill="toself", fillcolor="rgba(217,119,6,0.15)",
+                line=dict(color="rgba(0,0,0,0)"),
+                name="IC 95%", hoverinfo="skip"
+            ))
+            fig_prev.add_trace(go.Scatter(
+                x=datas_fut, y=prev,
+                name="Projeção HW", mode="lines+markers",
+                line=dict(color=COR_ATENCAO, dash="dot", width=2),
+                marker=dict(symbol="diamond", size=8)
+            ))
+            layout_base(fig_prev, height=420)
+            st.plotly_chart(fig_prev, use_container_width=True, config={'displayModeBar': True})
+
+            col_p1, col_p2, col_p3 = st.columns(3)
+            for col_p, (d, v) in zip([col_p1,col_p2,col_p3], zip(datas_fut, prev)):
+                with col_p:
+                    st.markdown(f"""
+                    <div class="insight-box">
+                        <div class="insight-label">Projeção {d.strftime('%b/%Y')}</div>
+                        <div class="kpi-value" style="font-size:1.2rem">{fmt_brl(v)}</div>
+                    </div>""", unsafe_allow_html=True)
+
+    st.markdown("#### Variação Mensal Recente")
+    tab_var = evolucao[["data_base","volume_operacoes","crescimento"]].tail(6).copy()
+    tab_var["data_base"] = tab_var["data_base"].dt.strftime("%m/%Y")
+    tab_var["crescimento"] = tab_var["crescimento"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—")
+    tab_var["volume_operacoes"] = tab_var["volume_operacoes"].apply(fmt_brl)
+    tab_var.columns = ["Mês","Volume","Variação"]
+    st.dataframe(tab_var, use_container_width=True, hide_index=True)
+
+    st.markdown("#### Comparativo Ano a Ano (YoY)")
+    yoy = df_f.copy()
+    yoy["ano"] = yoy["data_base"].dt.year
+    yoy["mes"] = yoy["data_base"].dt.month
+    yoy_data = yoy.groupby(["ano","mes"])["volume_operacoes"].sum().reset_index()
+    yoy_data = yoy_data[yoy_data["ano"] >= yoy_data["ano"].max()-1]
+
+    fig_yoy = go.Figure()
+    cores_ano = [COR_SECUNDARIA, COR_ATENCAO, COR_SUCESSO]
+    for i, ano in enumerate(sorted(yoy_data["ano"].unique())):
+        d = yoy_data[yoy_data["ano"]==ano]
+        fig_yoy.add_trace(go.Scatter(
+            x=d["mes"], y=d["volume_operacoes"],
+            name=str(ano), mode="lines+markers",
+            line=dict(color=cores_ano[i%3], width=2.5)
+        ))
+    meses_label = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+    fig_yoy.update_xaxes(tickvals=list(range(1,13)), ticktext=meses_label)
+    layout_base(fig_yoy, height=400)
+    st.plotly_chart(fig_yoy, use_container_width=True, config={'displayModeBar': True})
+
+# -------------------------------------------------------------
+# TAB 2 – Mercado e Concentração
+# -------------------------------------------------------------
 with tab2:
-    st.markdown("#### 🏦 Participação de Mercado, HHI e Pareto")
-    # ... (código completo da aba 2)
-    st.info("Ranking, concentração e análise de Pareto com download de gráfico.")
+    market = df_f.groupby(col_banco)["numero_operacoes"].sum().sort_values(ascending=False).reset_index()
+    hhi = calcular_hhi(market, "numero_operacoes")
+    class_hhi, css_hhi, expl_hhi2 = interpretar_hhi(hhi)
 
+    col_hhi, col_pareto = st.columns(2)
+    with col_hhi:
+        st.markdown("#### Índice de Concentração de Mercado (HHI)")
+        st.markdown(f"""
+        <div class="insight-box">
+            <div class="insight-label">Herfindahl-Hirschman Index</div>
+            <div class="kpi-value" style="font-size:2.2rem">{hhi:.0f}</div>
+            <span class="badge {css_hhi}">{class_hhi}</span>
+            <p style="margin-top:0.7rem; font-size:0.82rem; color:#94A3B8; line-height:1.5">{expl_hhi2}</p>
+            <p style="font-size:0.75rem; color:#64748B">
+            <b>Como ler:</b> HHI &lt; 1.500 = competitivo | 1.500–2.500 = moderado | &gt; 2.500 = concentrado.<br>
+            Calculado sobre número de contratos entre as principais instituições.
+            </p>
+        </div>""", unsafe_allow_html=True)
+
+    with col_pareto:
+        st.markdown("#### Análise de Pareto (80/20)")
+        pareto = calcular_pareto(market.head(10), "numero_operacoes")
+        fig_p = make_subplots(specs=[[{"secondary_y":True}]])
+        fig_p.add_trace(go.Bar(
+            x=pareto[col_banco], y=pareto["numero_operacoes"],
+            name="Contratos", marker_color=COR_SECUNDARIA, opacity=0.85
+        ), secondary_y=False)
+        fig_p.add_trace(go.Scatter(
+            x=pareto[col_banco], y=pareto["pct_acum"],
+            name="% Acumulado", mode="lines+markers",
+            line=dict(color=COR_ALERTA, width=2.5),
+            marker=dict(size=7)
+        ), secondary_y=True)
+        fig_p.add_hline(y=80, line_dash="dash", line_color=COR_ATENCAO,
+                        annotation_text="80%", annotation_position="top right",
+                        secondary_y=True)
+        fig_p.update_yaxes(title_text="Contratos", secondary_y=False)
+        fig_p.update_yaxes(title_text="% Acumulado", secondary_y=True, range=[0,105])
+        layout_base(fig_p, height=400)
+        st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': True})
+
+    st.markdown("#### Ranking de Mercado – Top 15 Instituições")
+    ranking = market.head(15).copy()
+    total_r = ranking["numero_operacoes"].sum()
+    ranking["% Individual"] = (ranking["numero_operacoes"]/total_r*100).round(1)
+    ranking["% Acumulado"]  = ranking["% Individual"].cumsum().round(1)
+    ranking["Volume (R$)"]  = df_f.groupby(col_banco)["volume_operacoes"].sum().reindex(ranking[col_banco].values).values
+    ranking["Volume (R$)"]  = ranking["Volume (R$)"].apply(fmt_brl)
+    ranking["numero_operacoes"] = ranking["numero_operacoes"].apply(fmt_num)
+    ranking.columns = ["Instituição","Contratos","% Individual","% Acumulado","Volume"]
+    st.dataframe(ranking, use_container_width=True, hide_index=True)
+
+    lider = market.iloc[0][col_banco]
+    part_lider = market.iloc[0]["numero_operacoes"]/market["numero_operacoes"].sum()*100
+    top3_pct   = market.head(3)["numero_operacoes"].sum()/market["numero_operacoes"].sum()*100
+
+    st.markdown(f"""
+    <div class="insight-box">
+        <div class="insight-label">📖 Interpretação Executiva</div>
+        <div class="insight-text">
+        <b>{lider}</b> lidera com <b>{part_lider:.1f}%</b> dos contratos do programa.
+        As 3 maiores instituições juntas concentram <b>{top3_pct:.1f}%</b> do total —
+        {'o que indica dependência crítica de poucos players e risco de interrupção sistêmica.' if top3_pct > 60 else 'distribuição relativamente equilibrada, com risco sistêmico moderado.'}
+        </div>
+    </div>""", unsafe_allow_html=True)
+
+# -------------------------------------------------------------
+# TAB 3 – Distribuição Regional
+# -------------------------------------------------------------
 with tab3:
-    st.markdown("#### 🗺️ Análise Regional (Mapas de calor e líderes por estado)")
-    # ... (código completo da aba 3)
-    st.info("Heatmap interativo com seletor de meses, pizza regional, treemap cruzado.")
+    reg_data = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
+    total_reg = reg_data["volume_operacoes"].sum()
+    reg_data["pct"] = (reg_data["volume_operacoes"]/total_reg*100).round(1)
+    regiao_lider = reg_data.sort_values("volume_operacoes",ascending=False).iloc[0]
 
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        st.markdown("#### Participação Regional por Volume")
+        fig_donut = go.Figure(go.Pie(
+            labels=reg_data["regiao"], values=reg_data["volume_operacoes"],
+            hole=0.55,
+            textinfo="percent+label",
+            marker=dict(colors=[COR_SECUNDARIA, COR_ATENCAO, COR_SUCESSO, COR_ALERTA, "#64748B"],
+                        line=dict(color=COR_FUNDO, width=2))
+        ))
+        fig_donut.add_annotation(text=f"{regiao_lider['pct']:.0f}%<br>{regiao_lider['regiao']}",
+                                 x=0.5, y=0.5, showarrow=False,
+                                 font=dict(size=14, color=COR_TEXTO))
+        layout_base(fig_donut, height=420)
+        st.plotly_chart(fig_donut, use_container_width=True, config={'displayModeBar': True})
+
+        st.markdown(f"""
+        <div class="insight-box">
+            <div class="insight-label">📖 Leitura Regional</div>
+            <div class="insight-text">
+            A região <b>{regiao_lider['regiao']}</b> concentra <b>{regiao_lider['pct']:.1f}%</b>
+            das renegociações, indicando forte dependência regional do programa.
+            {'Isso sugere que o impacto do Desenrola é desigualmente distribuído no território nacional.' if regiao_lider['pct'] > 40 else 'A distribuição está relativamente balanceada entre as regiões.'}
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+    with col_r2:
+        st.markdown("#### Evolução do Volume por Região (Heatmap)")
+        datas_heat = sorted(df_f["data_base"].dt.strftime("%Y-%m").unique())
+        if len(datas_heat) > 12:
+            default_heat = datas_heat[-12:]
+            heat_period = st.multiselect("Selecione os meses para o heatmap", datas_heat, default=default_heat)
+        else:
+            heat_period = datas_heat
+
+        heat_df = df_f[df_f["data_base"].dt.strftime("%Y-%m").isin(heat_period)]
+        heat = heat_df.groupby(["regiao", heat_df["data_base"].dt.strftime("%Y-%m")])["volume_operacoes"].sum().reset_index()
+        heat.columns = ["regiao","mes","volume"]
+        pivot = heat.pivot(index="regiao", columns="mes", values="volume").fillna(0)/1e6
+        if not pivot.empty:
+            fig_heat = go.Figure(go.Heatmap(
+                z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
+                colorscale="Blues", text=np.round(pivot.values,1),
+                texttemplate="%{text}M",
+                colorbar=dict(title="R$ Milhões")
+            ))
+            layout_base(fig_heat, height=420)
+            st.plotly_chart(fig_heat, use_container_width=True, config={'displayModeBar': True})
+        else:
+            st.info("Nenhum dado para o período selecionado.")
+
+    st.markdown("#### Líderes de Mercado por Estado")
+    uf_banco = df_f.groupby(["unidade_federacao", col_banco])["numero_operacoes"].sum().reset_index()
+    uf_banco = uf_banco.sort_values(["unidade_federacao","numero_operacoes"], ascending=[True,False])
+    top3_uf  = uf_banco.groupby("unidade_federacao").head(3).reset_index(drop=True)
+    top3_uf["rank"] = top3_uf.groupby("unidade_federacao").cumcount()+1
+    top3_uf["disp"] = top3_uf.apply(lambda x: f"{x[col_banco]} ({fmt_num(x['numero_operacoes'])})", axis=1)
+    piv_uf = top3_uf.pivot_table(index="unidade_federacao", columns="rank", values="disp", aggfunc="first").reset_index()
+    piv_uf.columns = ["UF","🥇 Líder","🥈 2º","🥉 3º"]
+    st.dataframe(piv_uf, use_container_width=True, hide_index=True)
+
+    st.markdown("#### Ticket Médio por Região e Tipo de Banco")
+    cruzado = df_f.groupby(["regiao","tipo_banco"]).agg(
+        numero_operacoes=("numero_operacoes","sum"),
+        volume_operacoes=("volume_operacoes","sum")
+    ).reset_index()
+    cruzado["ticket_medio"] = cruzado["volume_operacoes"]/cruzado["numero_operacoes"]
+    fig_tree = px.treemap(cruzado, path=["regiao","tipo_banco"], values="volume_operacoes",
+                          color="ticket_medio", color_continuous_scale="Blues",
+                          hover_data={"ticket_medio":":.2f"})
+    layout_base(fig_tree, height=480)
+    st.plotly_chart(fig_tree, use_container_width=True, config={'displayModeBar': True})
+
+# -------------------------------------------------------------
+# TAB 4 – Análise por Segmento
+# -------------------------------------------------------------
 with tab4:
-    st.markdown("#### 🔬 Comparativo por Segmento (Digital vs Tradicional)")
-    # ... (código completo da aba 4)
-    st.info("Dispersão, barras comparativas e boxplot de outliers.")
+    dispersao = df_f.groupby(col_banco).agg(
+        numero_operacoes=("numero_operacoes","sum"),
+        volume_operacoes=("volume_operacoes","sum"),
+        tipo_banco=("tipo_banco","first")
+    ).reset_index()
+    dispersao["ticket_medio"] = dispersao["volume_operacoes"]/dispersao["numero_operacoes"]
+    dispersao = dispersao[dispersao["numero_operacoes"] > 1000]
 
+    st.markdown("#### Dispersão por Segmento Institucional")
+    fig_disp = go.Figure()
+    cores_seg = {"Banco Digital":"#10B981","Banco Tradicional":"#2563EB",
+                 "Banco de Investimento":"#D97706","Outras Instituições":"#64748B"}
+    for seg, grp in dispersao.groupby("tipo_banco"):
+        size_norm = np.log1p(grp["volume_operacoes"] / dispersao["volume_operacoes"].max()) * 40 + 8
+        fig_disp.add_trace(go.Scatter(
+            x=grp["numero_operacoes"], y=grp["ticket_medio"],
+            mode="markers", name=seg,
+            marker=dict(size=size_norm, color=cores_seg.get(seg,"#64748B"), opacity=0.75,
+                        line=dict(width=1, color=COR_BORDA)),
+            hovertemplate="<b>%{customdata}</b><br>Operações: %{x:,.0f}<br>Ticket: R$ %{y:,.0f}<extra></extra>",
+            customdata=grp[col_banco]
+        ))
+    layout_base(fig_disp, height=480)
+    st.plotly_chart(fig_disp, use_container_width=True, config={'displayModeBar': True})
+
+    st.markdown("#### Comparativo: Operações vs Ticket Médio por Segmento")
+    comp = df_f.groupby("tipo_banco").agg(
+        numero_operacoes=("numero_operacoes","sum"),
+        volume_operacoes=("volume_operacoes","sum")
+    ).reset_index()
+    comp["ticket_medio"] = comp["volume_operacoes"]/comp["numero_operacoes"]
+    comp["pct_ops"]      = (comp["numero_operacoes"]/comp["numero_operacoes"].sum()*100).round(1)
+
+    fig_comp = make_subplots(rows=1, cols=2,
+                             subplot_titles=["Número de Contratos","Ticket Médio (R$)"])
+    colors_comp = [cores_seg.get(s,"#64748B") for s in comp["tipo_banco"]]
+    fig_comp.add_trace(go.Bar(
+        x=comp["tipo_banco"], y=comp["numero_operacoes"],
+        text=comp["numero_operacoes"].apply(fmt_num), textposition="outside",
+        marker_color=colors_comp, name="Contratos"
+    ), row=1, col=1)
+    fig_comp.add_trace(go.Bar(
+        x=comp["tipo_banco"], y=comp["ticket_medio"],
+        text=comp["ticket_medio"].apply(fmt_brl), textposition="outside",
+        marker_color=colors_comp, name="Ticket", showlegend=False
+    ), row=1, col=2)
+    layout_base(fig_comp, height=420, showlegend=False)
+    st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': True})
+
+    st.markdown("#### Distribuição de Contratos (Detecção de Outliers)")
+    st.caption("Caixas com bigodes longos indicam instituições com comportamento atípico – meses de pico ou campanhas pontuais.")
+    top10 = df_f.groupby(col_banco)["numero_operacoes"].sum().nlargest(10).index
+    df_top = df_f[df_f[col_banco].isin(top10)]
+    fig_box = go.Figure()
+    for inst in top10:
+        d = df_top[df_top[col_banco]==inst]["numero_operacoes"]
+        fig_box.add_trace(go.Box(y=d, name=inst, boxpoints="outliers",
+                                  marker_color=COR_SECUNDARIA, line_color=COR_SECUNDARIA))
+    fig_box.update_layout(showlegend=False)
+    layout_base(fig_box, height=450)
+    st.plotly_chart(fig_box, use_container_width=True, config={'displayModeBar': True})
+
+# -------------------------------------------------------------
+# TAB 5 – Agrupamento (ML)
+# -------------------------------------------------------------
 with tab5:
-    st.markdown("#### 🤖 Agrupamento de Instituições (K-Means Dinâmico)")
-    # ... (código completo da aba 5)
-    st.info("Clusterização interativa – visualize grupos e baixe os detalhes.")
+    st.markdown("#### Agrupamento de Instituições (K-Means Dinâmico)")
+    st.markdown("""
+    <div class="insight-box">
+        <div class="insight-label">Como funciona</div>
+        <div class="insight-text">
+        O algoritmo K-Means agrupa automaticamente as instituições por similaridade de comportamento,
+        considerando <b>volume de contratos</b> e <b>ticket médio</b>. Os rótulos são atribuídos
+        <b>dinamicamente</b> com base nas médias de cada grupo — sem assumir ordem fixa dos clusters,
+        o que garante consistência na interpretação independentemente da execução.
+        </div>
+    </div>""", unsafe_allow_html=True)
 
+    fig_cl, cluster_data = clusterizar_bancos(df_f, col_banco)
+    if fig_cl:
+        st.plotly_chart(fig_cl, use_container_width=True, config={'displayModeBar': True})
+
+        if cluster_data is not None:
+            st.markdown("#### Resumo por Grupo")
+            resumo = cluster_data.groupby("cluster_nome").agg(
+                Instituições=("nome_conglomerado_financeiro","count"),
+                Contratos_Médio=("numero_operacoes","mean"),
+                Ticket_Médio=("ticket_medio","mean")
+            ).reset_index()
+            resumo["Contratos_Médio"] = resumo["Contratos_Médio"].apply(fmt_num)
+            resumo["Ticket_Médio"]    = resumo["Ticket_Médio"].apply(fmt_brl)
+            resumo.columns = ["Grupo","Qtd Instituições","Média de Contratos","Ticket Médio"]
+            st.dataframe(resumo, use_container_width=True, hide_index=True)
+
+            with st.expander("Ver todas as instituições por grupo"):
+                for nome_cl, grp in cluster_data.groupby("cluster_nome"):
+                    st.markdown(f"**{nome_cl}**")
+                    st.dataframe(
+                        grp[[col_banco,"numero_operacoes","ticket_medio"]].rename(columns={
+                            col_banco:"Instituição","numero_operacoes":"Contratos","ticket_medio":"Ticket Médio"
+                        }),
+                        use_container_width=True, hide_index=True
+                    )
+    else:
+        st.info("Dados insuficientes para realizar o agrupamento.")
+
+# -------------------------------------------------------------
+# TAB 6 – Conclusões e Exportação
+# -------------------------------------------------------------
 with tab6:
-    st.markdown("#### 📊 Relatório Executivo e Exportação de Dados")
-    # ... (código completo da aba 6 com exportação)
-    st.info("Baixe os dados filtrados em CSV ou o relatório em TXT.")
+    st.markdown("#### 📌 Narrativa Executiva")
+
+    cresc_medio = evolucao["crescimento"].mean() if not evolucao["crescimento"].isna().all() else 0
+    regiao_top  = reg_data.sort_values("volume_operacoes",ascending=False).iloc[0]
+    lider_banco = market.iloc[0][col_banco]
+    part_banco  = market.iloc[0]["numero_operacoes"]/market["numero_operacoes"].sum()*100
+    corr_val    = df_f[["numero_operacoes","volume_operacoes"]].corr().iloc[0,1]
+    df_saz      = df_f.copy()
+    df_saz["mes"] = df_f["data_base"].dt.month
+    mes_pico    = df_saz.groupby("mes")["volume_operacoes"].sum().idxmax()
+    nomes_meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    _, _, expl_hhi2 = interpretar_hhi(hhi)
+
+    insights = [
+        ("📈 Tendência Geral",
+         f"O programa apresentou {'crescimento' if cresc_medio > 0 else 'retração'} médio de "
+         f"**{abs(cresc_medio):.2f}% ao mês** no período analisado, "
+         f"{'sugerindo expansão sustentada do alcance do programa.' if cresc_medio > 0 else 'sinalizando perda de momentum que merece atenção.'}"),
+
+        ("🗺️ Concentração Regional",
+         f"A região **{regiao_top['regiao']}** concentra **{regiao_top['pct']:.1f}%** do volume total de renegociações. "
+         f"{'Essa dependência indica que o impacto social do Desenrola é desigualmente distribuído no território nacional, com risco de exclusão financeira em outras regiões.' if regiao_top['pct'] > 40 else 'A distribuição regional é relativamente equilibrada.'}"),
+
+        ("🏦 Liderança Bancária",
+         f"**{lider_banco}** responde por **{part_banco:.1f}%** de todos os contratos. "
+         f"{'Nível de concentração elevado — a continuidade do programa fica vulnerável às decisões de poucos players.' if part_banco > 30 else 'Participação razoável, sem domínio excessivo.'}"),
+
+        ("📊 Concentração de Mercado (HHI)",
+         f"O índice HHI calculado é **{hhi:.0f}**. {expl_hhi2}"),
+
+        ("📅 Sazonalidade",
+         f"O mês de **{nomes_meses[mes_pico-1]}** historicamente registra o maior volume de renegociações. "
+         f"Campanhas e incentivos concentrados nesse período podem maximizar o alcance do programa."),
+
+        ("🔗 Correlação Operações × Volume",
+         f"A correlação entre número de contratos e volume financeiro é **{corr_val:.3f}** "
+         f"({'forte' if corr_val > 0.7 else 'moderada' if corr_val > 0.4 else 'fraca'}). "
+         f"{'Isso indica que mais contratos resultam proporcionalmente em maior volume — perfil homogêneo de dívidas.' if corr_val > 0.7 else 'Variação no ticket médio por tipo de contrato é relevante para a análise.'}")
+    ]
+
+    for titulo_ins, texto_ins in insights:
+        st.markdown(f"""
+        <div class="insight-box">
+            <div class="insight-label">{titulo_ins}</div>
+            <div class="insight-text">{texto_ins}</div>
+        </div>""", unsafe_allow_html=True)
+
+    alertas_fin = gerar_alertas(evolucao, hhi, ticket_medio)
+    if alertas_fin:
+        st.markdown("#### 🔔 Pontos de Atenção")
+        for tipo_a, titulo_a, msg_a in alertas_fin:
+            fn = getattr(st, tipo_a, st.info)
+            fn(f"**{titulo_a}:** {msg_a}")
+
+    st.markdown("---")
+    st.markdown("#### 📥 Exportação")
+    csv = df_f.to_csv(index=False).encode("utf-8")
+    relatorio_txt = f"""RELATÓRIO DESENROLA BRASIL – {datetime.now().strftime('%d/%m/%Y %H:%M')}
+{'='*55}
+INDICADORES GERAIS
+  Volume Total          : {fmt_brl(total_volume)}
+  Total de Contratos    : {fmt_num(total_ops)}
+  Ticket Médio          : {fmt_brl(ticket_medio)}
+  Instituições Atuantes : {fmt_num(num_inst)}
+  Período               : {dq['periodo_inicio']} → {dq['periodo_fim']}
+
+CONCENTRAÇÃO
+  HHI                   : {hhi:.0f}
+  Classificação         : {class_hhi}
+
+DESTAQUES
+  Banco Líder           : {lider_banco} ({part_banco:.1f}% dos contratos)
+  Região Líder          : {regiao_top['regiao']} ({regiao_top['pct']:.1f}% do volume)
+  Crescimento Médio     : {cresc_medio:+.2f}% / mês
+  Pico de Sazonalidade  : {nomes_meses[mes_pico-1]}
+  Correlação Ops×Volume : {corr_val:.3f}
+
+QUALIDADE DOS DADOS
+  Registros Válidos     : {fmt_num(dq['total_registros'])}
+  Registros Descartados : {fmt_num(dq['registros_descartados'])}
+  Completude Volume     : {dq['completude_volume']:.1f}%
+  Completude Operações  : {dq['completude_operacoes']:.1f}%
+
+Fonte: Banco Central do Brasil – Sistema de Informações de Crédito (SCR)
+Metodologia: Holt-Winters para projeção | K-Means dinâmico para segmentação | HHI para concentração
+"""
+
+    col_exp1, col_exp2 = st.columns(2)
+    with col_exp1:
+        st.download_button("📥 Dados Filtrados (CSV)", data=csv,
+                           file_name=f"desenrola_{datetime.now().strftime('%Y%m%d')}.csv",
+                           mime="text/csv", use_container_width=True)
+    with col_exp2:
+        st.download_button("📝 Relatório Executivo (TXT)", data=relatorio_txt,
+                           file_name=f"relatorio_desenrola_{datetime.now().strftime('%Y%m%d')}.txt",
+                           mime="text/plain", use_container_width=True)
 
 # ============================================================
 # RODAPÉ
