@@ -134,15 +134,20 @@ def agrupar_regiao(uf):
         if uf in ests: return r
     return "Não Identificado"
 
+@st.cache_data
 def calcular_hhi(df, col):
     total = df[col].sum()
     return 0 if total == 0 else ((df[col]/total)**2).sum()*10000
 
+@st.cache_data
 def interpretar_hhi(hhi):
-    if hhi < 1500: return "Mercado Competitivo (HHI < 1.500)", "badge-low", "Baixo risco de concentração bancária – saudável para o consumidor."
-    if hhi < 2500: return "Concentração Moderada (HHI 1.500–2.500)", "badge-mid", "Atenção: poucos bancos lideram o programa. Monitorar tendência."
+    if hhi < 1500:
+        return "Mercado Competitivo (HHI < 1.500)", "badge-low", "Baixo risco de concentração bancária – saudável para o consumidor."
+    if hhi < 2500:
+        return "Concentração Moderada (HHI 1.500–2.500)", "badge-mid", "Atenção: poucos bancos lideram o programa. Monitorar tendência."
     return "Altamente Concentrado (HHI > 2.500)", "badge-high", "Risco sistêmico elevado: oligopólio pode reduzir acesso ao crédito."
 
+@st.cache_data
 def calcular_pareto(df, col):
     df_s = df.sort_values(col, ascending=False).reset_index(drop=True)
     df_s["pct_acum"] = (df_s[col].cumsum() / df_s[col].sum())*100
@@ -162,35 +167,28 @@ def layout_base(fig, height=450, showlegend=True):
     )
     fig.update_xaxes(showgrid=False, color=COR_TEXTO, title_font_size=12, linecolor=COR_BORDA)
     fig.update_yaxes(showgrid=True, gridcolor=COR_GRID, color=COR_TEXTO, title_font_size=12)
+    # Habilita barra de ferramentas para exportar PNG
+    fig.update_layout(autosize=True)
     return fig
 
 # ============================================================
-# FIX 1 – PROJEÇÃO SÉRIA: Holt-Winters (Exponential Smoothing)
+# FIX 1 – PROJEÇÃO HOLT-WINTERS (com segurança)
 # ============================================================
 @st.cache_data
 def projetar_holt_winters(series_volume: pd.Series, datas: pd.Series, periodos=3):
-    """
-    Usa Holt-Winters (dupla suavização) que captura tendência.
-    Retorna datas futuras e previsões com intervalo de confiança simples.
-    """
     if len(series_volume) < 4:
         return None, None, None, None
-
     modelo = ExponentialSmoothing(
         series_volume.values,
         trend="add",
-        seasonal=None,          # série curta demais pra sazonalidade
+        seasonal=None,
         initialization_method="estimated"
     ).fit(optimized=True)
-
     previsao = modelo.forecast(periodos)
     datas_futuras = pd.date_range(datas.max(), periods=periodos+1, freq="MS")[1:]
-
-    # IC simples ±1.96*sigma residual
     sigma = np.std(modelo.resid)
     lower = previsao - 1.96*sigma
     upper = previsao + 1.96*sigma
-
     return datas_futuras, previsao, lower, upper
 
 # ============================================================
@@ -214,30 +212,33 @@ def clusterizar_bancos(df, col_banco):
     kmeans = KMeans(n_clusters=n, random_state=42, n_init=10)
     dados["cluster"] = kmeans.fit_predict(features)
 
-    # ✅ ROTULAGEM DINÂMICA – sem assumir ordem fixa
     medias = dados.groupby("cluster")[["numero_operacoes","ticket_medio"]].mean()
     rank_vol    = medias["numero_operacoes"].rank(ascending=False).astype(int)
     rank_ticket = medias["ticket_medio"].rank(ascending=False).astype(int)
 
     def rotulo(c):
-        alto_vol    = rank_vol[c] == 1
+        alto_vol = rank_vol[c] == 1
         alto_ticket = rank_ticket[c] == 1
-        if alto_vol and not alto_ticket:    return "Alto Volume / Baixo Ticket"
-        if not alto_vol and alto_ticket:    return "Baixo Volume / Alto Ticket"
+        if alto_vol and not alto_ticket:
+            return "Alto Volume / Baixo Ticket"
+        if not alto_vol and alto_ticket:
+            return "Baixo Volume / Alto Ticket"
         return "Perfil Equilibrado"
 
     dados["cluster_nome"] = dados["cluster"].map(rotulo)
 
     fig = go.Figure()
-    cores_cluster = {"Alto Volume / Baixo Ticket":"#2563EB",
-                     "Baixo Volume / Alto Ticket":"#D97706",
-                     "Perfil Equilibrado":         "#16A34A"}
+    cores_cluster = {"Alto Volume / Baixo Ticket": COR_SECUNDARIA,
+                     "Baixo Volume / Alto Ticket": COR_ATENCAO,
+                     "Perfil Equilibrado": COR_SUCESSO}
     for nome, grp in dados.groupby("cluster_nome"):
+        # Escala logarítmica do tamanho da bolha para evitar distorção
+        size_norm = np.log1p(grp["volume_operacoes"] / grp["volume_operacoes"].max()) * 30 + 8
         fig.add_trace(go.Scatter(
             x=grp["numero_operacoes"], y=grp["ticket_medio"],
             mode="markers", name=nome,
-            marker=dict(size=grp["volume_operacoes"]/grp["volume_operacoes"].max()*40+6,
-                        color=cores_cluster.get(nome,"#64748B"), opacity=0.8,
+            marker=dict(size=size_norm,
+                        color=cores_cluster.get(nome, "#64748B"), opacity=0.8,
                         line=dict(width=1, color=COR_BORDA)),
             hovertemplate="<b>%{customdata}</b><br>Operações: %{x:,.0f}<br>Ticket Médio: R$ %{y:,.2f}<extra></extra>",
             customdata=grp[col_banco]
@@ -251,7 +252,7 @@ def clusterizar_bancos(df, col_banco):
     return fig, dados
 
 # ============================================================
-# FIX 3 – ANÁLISE DE QUALIDADE DE DADOS
+# FIX 3 – QUALIDADE DE DADOS
 # ============================================================
 def calcular_data_quality(df_original, df_limpo):
     total_raw = len(df_original) if df_original is not None else len(df_limpo)
@@ -272,8 +273,9 @@ def calcular_data_quality(df_original, df_limpo):
     }
 
 # ============================================================
-# INSIGHTS AUTOMÁTICOS
+# INSIGHTS AUTOMÁTICOS (cacheado)
 # ============================================================
+@st.cache_data
 def gerar_alertas(evolucao, hhi, ticket_medio_geral):
     alertas = []
     if len(evolucao) >= 2:
@@ -377,7 +379,6 @@ ticket_medio    = total_volume / total_ops if total_ops > 0 else 0
 num_inst        = df_f["nome_conglomerado_financeiro"].nunique()
 col_banco       = "nome_conglomerado_financeiro"
 
-# Variação vs mês anterior (para KPI delta)
 evolucao_global = df_f.groupby("data_base")["volume_operacoes"].sum().sort_index()
 delta_str = ""
 if len(evolucao_global) >= 2:
@@ -385,20 +386,32 @@ if len(evolucao_global) >= 2:
     delta_str = f"{'▲' if delta_pct > 0 else '▼'} {abs(delta_pct):.1f}% vs mês anterior"
 
 k1, k2, k3, k4 = st.columns(4)
-kpis = [
-    ("Volume de Renegociação", fmt_brl(total_volume), delta_str),
-    ("Total de Contratos",     fmt_num(total_ops),    ""),
-    ("Ticket Médio",           fmt_brl(ticket_medio), ""),
-    ("Instituições Atuantes",  fmt_num(num_inst),     ""),
-]
-for col_st, (titulo, valor, sub) in zip([k1,k2,k3,k4], kpis):
-    with col_st:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">{titulo}</div>
-            <div class="kpi-value">{valor}</div>
-            <div class="kpi-sub">{sub}</div>
-        </div>""", unsafe_allow_html=True)
+with k1:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">Volume de Renegociação</div>
+        <div class="kpi-value">{fmt_brl(total_volume)}</div>
+        <div class="kpi-sub">{delta_str}</div>
+    </div>""", unsafe_allow_html=True)
+with k2:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">Total de Contratos</div>
+        <div class="kpi-value">{fmt_num(total_ops)}</div>
+    </div>""", unsafe_allow_html=True)
+with k3:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">Ticket Médio</div>
+        <div class="kpi-value">{fmt_brl(ticket_medio)}</div>
+        <div class="kpi-sub">Volume / Contratos</div>
+    </div>""", unsafe_allow_html=True)
+with k4:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">Instituições Atuantes</div>
+        <div class="kpi-value">{fmt_num(num_inst)}</div>
+    </div>""", unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -425,23 +438,21 @@ with tab1:
     evolucao["crescimento"]  = evolucao["volume_operacoes"].pct_change()*100
     evolucao["media_movel3"] = evolucao["volume_operacoes"].rolling(3, min_periods=1).mean()
 
-    # ── Alertas automáticos ─────────────────────────────────
     market_hhi = df_f.groupby(col_banco)["numero_operacoes"].sum().reset_index()
     hhi_val    = calcular_hhi(market_hhi, "numero_operacoes")
     alertas    = gerar_alertas(evolucao, hhi_val, ticket_medio)
+
     if alertas:
         st.markdown("#### 🔔 Alertas Automáticos")
         for tipo_alerta, titulo_al, msg_al in alertas:
             fn = getattr(st, tipo_alerta, st.info)
             fn(f"**{titulo_al}:** {msg_al}")
 
-    # ── Gráfico principal com subplots ──────────────────────
     st.markdown("#### Histórico de Volume e Contratos")
     fig_ev = make_subplots(rows=2, cols=1, shared_xaxes=True,
                            row_heights=[0.65, 0.35],
                            vertical_spacing=0.08,
                            subplot_titles=["Volume de Renegociação (R$)", "Número de Contratos"])
-
     fig_ev.add_trace(go.Scatter(
         x=evolucao["data_base"], y=evolucao["volume_operacoes"],
         name="Volume Mensal", mode="lines+markers",
@@ -457,15 +468,12 @@ with tab1:
         x=evolucao["data_base"], y=evolucao["numero_operacoes"],
         name="Contratos", marker_color=COR_SECUNDARIA, opacity=0.6
     ), row=2, col=1)
-
     layout_base(fig_ev, height=500)
-    st.plotly_chart(fig_ev, use_container_width=True)
+    st.plotly_chart(fig_ev, use_container_width=True, config={'displayModeBar': True})
 
-    # ── Projeção Holt-Winters ───────────────────────────────
     if len(evolucao) >= 4:
         st.markdown("#### Projeção Holt-Winters (3 meses) — com intervalo de confiança 95%")
         st.caption("Suavização exponencial com tendência – captura aceleração/desaceleração melhor que regressão linear.")
-
         datas_fut, prev, lower, upper = projetar_holt_winters(
             evolucao["volume_operacoes"], evolucao["data_base"]
         )
@@ -476,7 +484,6 @@ with tab1:
                 name="Realizado", mode="lines+markers",
                 line=dict(color=COR_SECUNDARIA, width=2.5)
             ))
-            # Banda de confiança
             fig_prev.add_trace(go.Scatter(
                 x=list(datas_fut)+list(datas_fut[::-1]),
                 y=list(upper)+list(lower[::-1]),
@@ -491,7 +498,7 @@ with tab1:
                 marker=dict(symbol="diamond", size=8)
             ))
             layout_base(fig_prev, height=420)
-            st.plotly_chart(fig_prev, use_container_width=True)
+            st.plotly_chart(fig_prev, use_container_width=True, config={'displayModeBar': True})
 
             col_p1, col_p2, col_p3 = st.columns(3)
             for col_p, (d, v) in zip([col_p1,col_p2,col_p3], zip(datas_fut, prev)):
@@ -502,18 +509,14 @@ with tab1:
                         <div class="kpi-value" style="font-size:1.2rem">{fmt_brl(v)}</div>
                     </div>""", unsafe_allow_html=True)
 
-    # ── Variação mensal tabela ──────────────────────────────
     st.markdown("#### Variação Mensal Recente")
     tab_var = evolucao[["data_base","volume_operacoes","crescimento"]].tail(6).copy()
     tab_var["data_base"] = tab_var["data_base"].dt.strftime("%m/%Y")
-    tab_var["crescimento"] = tab_var["crescimento"].apply(
-        lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"
-    )
+    tab_var["crescimento"] = tab_var["crescimento"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—")
     tab_var["volume_operacoes"] = tab_var["volume_operacoes"].apply(fmt_brl)
     tab_var.columns = ["Mês","Volume","Variação"]
     st.dataframe(tab_var, use_container_width=True, hide_index=True)
 
-    # ── YoY ────────────────────────────────────────────────
     st.markdown("#### Comparativo Ano a Ano (YoY)")
     yoy = df_f.copy()
     yoy["ano"] = yoy["data_base"].dt.year
@@ -533,7 +536,7 @@ with tab1:
     meses_label = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
     fig_yoy.update_xaxes(tickvals=list(range(1,13)), ticktext=meses_label)
     layout_base(fig_yoy, height=400)
-    st.plotly_chart(fig_yoy, use_container_width=True)
+    st.plotly_chart(fig_yoy, use_container_width=True, config={'displayModeBar': True})
 
 # ──────────────────────────────────────────────────────────
 # TAB 2  –  MERCADO E CONCENTRAÇÃO
@@ -543,7 +546,6 @@ with tab2:
     hhi    = calcular_hhi(market, "numero_operacoes")
     class_hhi, css_hhi, expl_hhi = interpretar_hhi(hhi)
 
-    # ── HHI + narrativa ─────────────────────────────────────
     col_hhi, col_pareto = st.columns(2)
     with col_hhi:
         st.markdown("#### Índice de Concentração de Mercado (HHI)")
@@ -579,9 +581,8 @@ with tab2:
         fig_p.update_yaxes(title_text="Contratos", secondary_y=False)
         fig_p.update_yaxes(title_text="% Acumulado", secondary_y=True, range=[0,105])
         layout_base(fig_p, height=400)
-        st.plotly_chart(fig_p, use_container_width=True)
+        st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': True})
 
-    # ── Ranking com participação ─────────────────────────────
     st.markdown("#### Ranking de Mercado – Top 15 Instituições")
     ranking = market.head(15).copy()
     total_r = ranking["numero_operacoes"].sum()
@@ -593,7 +594,6 @@ with tab2:
     ranking.columns = ["Instituição","Contratos","% Individual","% Acumulado","Volume"]
     st.dataframe(ranking, use_container_width=True, hide_index=True)
 
-    # ── Narrativa executiva ─────────────────────────────────
     lider = market.iloc[0][col_banco]
     part_lider = market.iloc[0]["numero_operacoes"]/market["numero_operacoes"].sum()*100
     top3_pct   = market.head(3)["numero_operacoes"].sum()/market["numero_operacoes"].sum()*100
@@ -609,7 +609,7 @@ with tab2:
     </div>""", unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────
-# TAB 3  –  REGIONAL
+# TAB 3  –  REGIONAL (com seletor de período no heatmap)
 # ──────────────────────────────────────────────────────────
 with tab3:
     reg_data = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
@@ -628,12 +628,11 @@ with tab3:
                         line=dict(color=COR_FUNDO, width=2))
         ))
         fig_donut.add_annotation(text=f"{regiao_lider['pct']:.0f}%<br>{regiao_lider['regiao']}",
-                                  x=0.5, y=0.5, showarrow=False,
-                                  font=dict(size=14, color=COR_TEXTO))
+                                 x=0.5, y=0.5, showarrow=False,
+                                 font=dict(size=14, color=COR_TEXTO))
         layout_base(fig_donut, height=420)
-        st.plotly_chart(fig_donut, use_container_width=True)
+        st.plotly_chart(fig_donut, use_container_width=True, config={'displayModeBar': True})
 
-        # Narrativa executiva regional
         st.markdown(f"""
         <div class="insight-box">
             <div class="insight-label">📖 Leitura Regional</div>
@@ -646,19 +645,30 @@ with tab3:
 
     with col_r2:
         st.markdown("#### Evolução do Volume por Região (Heatmap)")
-        heat = df_f.groupby(["regiao", df_f["data_base"].dt.strftime("%Y-%m")])["volume_operacoes"].sum().reset_index()
+        # Seletor de período para o heatmap
+        datas_heat = sorted(df_f["data_base"].dt.strftime("%Y-%m").unique())
+        if len(datas_heat) > 12:
+            default_heat = datas_heat[-12:]
+            heat_period = st.multiselect("Selecione os meses para o heatmap", datas_heat, default=default_heat)
+        else:
+            heat_period = datas_heat
+
+        heat_df = df_f[df_f["data_base"].dt.strftime("%Y-%m").isin(heat_period)]
+        heat = heat_df.groupby(["regiao", heat_df["data_base"].dt.strftime("%Y-%m")])["volume_operacoes"].sum().reset_index()
         heat.columns = ["regiao","mes","volume"]
         pivot = heat.pivot(index="regiao", columns="mes", values="volume").fillna(0)/1e6
-        fig_heat = go.Figure(go.Heatmap(
-            z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
-            colorscale="Blues", text=np.round(pivot.values,1),
-            texttemplate="%{text}M",
-            colorbar=dict(title="R$ Milhões")
-        ))
-        layout_base(fig_heat, height=420)
-        st.plotly_chart(fig_heat, use_container_width=True)
+        if not pivot.empty:
+            fig_heat = go.Figure(go.Heatmap(
+                z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
+                colorscale="Blues", text=np.round(pivot.values,1),
+                texttemplate="%{text}M",
+                colorbar=dict(title="R$ Milhões")
+            ))
+            layout_base(fig_heat, height=420)
+            st.plotly_chart(fig_heat, use_container_width=True, config={'displayModeBar': True})
+        else:
+            st.info("Nenhum dado para o período selecionado.")
 
-    # ── Top 3 por estado ────────────────────────────────────
     st.markdown("#### Líderes de Mercado por Estado")
     uf_banco = df_f.groupby(["unidade_federacao", col_banco])["numero_operacoes"].sum().reset_index()
     uf_banco = uf_banco.sort_values(["unidade_federacao","numero_operacoes"], ascending=[True,False])
@@ -669,7 +679,6 @@ with tab3:
     piv_uf.columns = ["UF","🥇 Líder","🥈 2º","🥉 3º"]
     st.dataframe(piv_uf, use_container_width=True, hide_index=True)
 
-    # ── Treemap ─────────────────────────────────────────────
     st.markdown("#### Ticket Médio por Região e Tipo de Banco")
     cruzado = df_f.groupby(["regiao","tipo_banco"]).agg(
         numero_operacoes=("numero_operacoes","sum"),
@@ -680,7 +689,7 @@ with tab3:
                           color="ticket_medio", color_continuous_scale="Blues",
                           hover_data={"ticket_medio":":.2f"})
     layout_base(fig_tree, height=480)
-    st.plotly_chart(fig_tree, use_container_width=True)
+    st.plotly_chart(fig_tree, use_container_width=True, config={'displayModeBar': True})
 
 # ──────────────────────────────────────────────────────────
 # TAB 4  –  SEGMENTOS
@@ -699,19 +708,18 @@ with tab4:
     cores_seg = {"Banco Digital":"#10B981","Banco Tradicional":"#2563EB",
                  "Banco de Investimento":"#D97706","Outras Instituições":"#64748B"}
     for seg, grp in dispersao.groupby("tipo_banco"):
+        size_norm = np.log1p(grp["volume_operacoes"] / dispersao["volume_operacoes"].max()) * 40 + 8
         fig_disp.add_trace(go.Scatter(
             x=grp["numero_operacoes"], y=grp["ticket_medio"],
             mode="markers", name=seg,
-            marker=dict(size=grp["volume_operacoes"]/dispersao["volume_operacoes"].max()*45+8,
-                        color=cores_seg.get(seg,"#64748B"), opacity=0.75,
+            marker=dict(size=size_norm, color=cores_seg.get(seg,"#64748B"), opacity=0.75,
                         line=dict(width=1, color=COR_BORDA)),
             hovertemplate="<b>%{customdata}</b><br>Operações: %{x:,.0f}<br>Ticket: R$ %{y:,.0f}<extra></extra>",
             customdata=grp[col_banco]
         ))
     layout_base(fig_disp, height=480)
-    st.plotly_chart(fig_disp, use_container_width=True)
+    st.plotly_chart(fig_disp, use_container_width=True, config={'displayModeBar': True})
 
-    # ── Comparativo segmento – subplots lado a lado ─────────
     st.markdown("#### Comparativo: Operações vs Ticket Médio por Segmento")
     comp = df_f.groupby("tipo_banco").agg(
         numero_operacoes=("numero_operacoes","sum"),
@@ -734,9 +742,8 @@ with tab4:
         marker_color=colors_comp, name="Ticket", showlegend=False
     ), row=1, col=2)
     layout_base(fig_comp, height=420, showlegend=False)
-    st.plotly_chart(fig_comp, use_container_width=True)
+    st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': True})
 
-    # ── Boxplot outliers ─────────────────────────────────────
     st.markdown("#### Distribuição de Contratos (Detecção de Outliers)")
     st.caption("Caixas com bigodes longos indicam instituições com comportamento atípico – meses de pico ou campanhas pontuais.")
     top10 = df_f.groupby(col_banco)["numero_operacoes"].sum().nlargest(10).index
@@ -748,7 +755,7 @@ with tab4:
                                   marker_color=COR_SECUNDARIA, line_color=COR_SECUNDARIA))
     fig_box.update_layout(showlegend=False)
     layout_base(fig_box, height=450)
-    st.plotly_chart(fig_box, use_container_width=True)
+    st.plotly_chart(fig_box, use_container_width=True, config={'displayModeBar': True})
 
 # ──────────────────────────────────────────────────────────
 # TAB 5  –  K-MEANS CORRIGIDO
@@ -768,7 +775,7 @@ with tab5:
 
     fig_cl, cluster_data = clusterizar_bancos(df_f, col_banco)
     if fig_cl:
-        st.plotly_chart(fig_cl, use_container_width=True)
+        st.plotly_chart(fig_cl, use_container_width=True, config={'displayModeBar': True})
 
         if cluster_data is not None:
             st.markdown("#### Resumo por Grupo")
@@ -800,17 +807,17 @@ with tab5:
 with tab6:
     st.markdown("#### 📌 Narrativa Executiva")
 
-    # Recalcula variáveis necessárias
     cresc_medio = evolucao["crescimento"].mean() if not evolucao["crescimento"].isna().all() else 0
     regiao_top  = reg_data.sort_values("volume_operacoes",ascending=False).iloc[0]
     lider_banco = market.iloc[0][col_banco]
     part_banco  = market.iloc[0]["numero_operacoes"]/market["numero_operacoes"].sum()*100
     corr_val    = df_f[["numero_operacoes","volume_operacoes"]].corr().iloc[0,1]
-    df_saz      = df_f.copy(); df_saz["mes"] = df_f["data_base"].dt.month
+    df_saz      = df_f.copy()
+    df_saz["mes"] = df_f["data_base"].dt.month
     mes_pico    = df_saz.groupby("mes")["volume_operacoes"].sum().idxmax()
     nomes_meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-    _, css_hhi, expl_hhi2 = interpretar_hhi(hhi_val)
+    _, _, expl_hhi2 = interpretar_hhi(hhi_val)
 
     insights = [
         ("📈 Tendência Geral",
@@ -846,7 +853,6 @@ with tab6:
             <div class="insight-text">{texto_ins}</div>
         </div>""", unsafe_allow_html=True)
 
-    # ── Alertas na conclusão ─────────────────────────────────
     alertas_fin = gerar_alertas(evolucao, hhi_val, ticket_medio)
     if alertas_fin:
         st.markdown("#### 🔔 Pontos de Atenção")
@@ -854,7 +860,6 @@ with tab6:
             fn = getattr(st, tipo_a, st.info)
             fn(f"**{titulo_a}:** {msg_a}")
 
-    # ── Exportação ───────────────────────────────────────────
     st.markdown("---")
     st.markdown("#### 📥 Exportação")
     csv = df_f.to_csv(index=False).encode("utf-8")
@@ -888,14 +893,14 @@ Fonte: Banco Central do Brasil – Sistema de Informações de Crédito (SCR)
 Metodologia: Holt-Winters para projeção | K-Means dinâmico para segmentação | HHI para concentração
 """
 
-    c_exp1, c_exp2 = st.columns(2)
-    with c_exp1:
+    col_exp1, col_exp2 = st.columns(2)
+    with col_exp1:
         st.download_button("📥 Dados Filtrados (CSV)", data=csv,
-                           file_name=f"desenrola_{datetime.now():%Y%m%d}.csv",
+                           file_name=f"desenrola_{datetime.now().strftime('%Y%m%d')}.csv",
                            mime="text/csv", use_container_width=True)
-    with c_exp2:
+    with col_exp2:
         st.download_button("📝 Relatório Executivo (TXT)", data=relatorio_txt,
-                           file_name=f"relatorio_desenrola_{datetime.now():%Y%m%d}.txt",
+                           file_name=f"relatorio_desenrola_{datetime.now().strftime('%Y%m%d')}.txt",
                            mime="text/plain", use_container_width=True)
 
 # ============================================================
@@ -906,5 +911,5 @@ st.markdown(f"""
 <p style='text-align:center; color:#64748B; font-size:0.68rem;'>
     Dashboard Desenrola Brasil · Fonte: BCB/SCR ·
     Projeção: Holt-Winters · Segmentação: K-Means dinâmico · HHI ·
-    Última atualização: {dq['ultima_data']}
+    Última atualização: {dq.get('ultima_data', 'N/D')}
 </p>""", unsafe_allow_html=True)
