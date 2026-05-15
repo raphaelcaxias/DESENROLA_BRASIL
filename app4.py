@@ -10,7 +10,6 @@ from datetime import datetime
 import re
 import warnings
 
-# Apenas suprimir avisos de futuras alterações (não todos)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ============================================================
@@ -29,7 +28,6 @@ st.set_page_config(
 if "tema" not in st.session_state:
     st.session_state.tema = "claro"
 
-# Atualiza template do Plotly conforme o tema
 if st.session_state.tema == "claro":
     COR_FUNDO = "#F8FAFC"
     COR_CARD = "#FFFFFF"
@@ -116,11 +114,6 @@ def fmt_num(valor):
         return "0"
     return f"{int(valor):,}".replace(",", ".")
 
-def fmt_percentual(valor, total):
-    if total == 0:
-        return "0%"
-    return f"{(valor/total*100):.1f}%"
-
 def classificar_banco(nome):
     nome = str(nome).upper().strip()
     nome = re.sub(r'\s*-\s*PRUDENCIAL$', '', nome)
@@ -165,19 +158,18 @@ def calcular_pareto(df, coluna):
     return df_sorted
 
 def aplicar_layout_padrao(fig, height=450):
-    """Aplica layout padronizado a todos os gráficos"""
     fig.update_layout(
         template=PLOTLY_TEMPLATE,
         height=height,
-        margin=dict(l=40, r=40, t=50, b=40),
+        margin=dict(l=40, r=40, t=60, b=40),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=COR_TEXTO, family="Inter"),
+        font=dict(color=COR_TEXTO, family="Inter", size=12),
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11))
     )
-    fig.update_xaxes(showgrid=False, color=COR_TEXTO)
-    fig.update_yaxes(showgrid=True, gridcolor=COR_BORDA, color=COR_TEXTO)
+    fig.update_xaxes(showgrid=False, color=COR_TEXTO, title_font=dict(size=12))
+    fig.update_yaxes(showgrid=True, gridcolor=COR_BORDA, color=COR_TEXTO, title_font=dict(size=12))
     return fig
 
 # ============================================================
@@ -199,8 +191,6 @@ def analise_sazonalidade(df):
 @st.cache_data
 def matriz_correlacao(df):
     cols = ['numero_operacoes', 'volume_operacoes']
-    if 'ticket_medio' in df.columns:
-        cols.append('ticket_medio')
     corr = df[cols].corr()
     fig = px.imshow(corr, text_auto=True, aspect='auto', zmin=-1, zmax=1,
                     title='Matriz de Correlação entre Indicadores',
@@ -227,7 +217,7 @@ def treemap_cruzado(df):
     cruzado['ticket_medio'] = cruzado['volume_operacoes'] / cruzado['numero_operacoes']
     fig = px.treemap(cruzado, path=['regiao', 'tipo_banco'],
                      values='volume_operacoes', color='ticket_medio',
-                     title='Ticket Médio por Região e Tipo de Banco',
+                     title='Ticket Médio por Região e Tipo de Banco (R$)',
                      color_continuous_scale='Blues',
                      hover_data={'ticket_medio': ':,.2f'})
     return aplicar_layout_padrao(fig, height=500)
@@ -272,7 +262,7 @@ def comparativo_anual(df):
     return aplicar_layout_padrao(fig, height=400)
 
 # ============================================================
-# CARREGAMENTO DE DADOS (COM TRATAMENTO DE EXCEÇÕES ESPECÍFICAS)
+# CARREGAMENTO DE DADOS
 # ============================================================
 @st.cache_data(ttl=3600)
 def carregar_dados():
@@ -281,7 +271,6 @@ def carregar_dados():
         try:
             df = pd.read_csv("dados_desenrola.csv", sep=";", encoding=enc, low_memory=False)
             df.columns = df.columns.str.lower().str.strip()
-
             for col in ["numero_operacoes", "volume_operacoes"]:
                 if col in df.columns:
                     df[col] = pd.to_numeric(
@@ -293,13 +282,13 @@ def carregar_dados():
             df["regiao"] = df["unidade_federacao"].apply(agrupar_regiao)
             df = df.dropna(subset=["volume_operacoes", "numero_operacoes"])
             return df
-        except (ValueError, KeyError, TypeError) as e:
+        except (ValueError, KeyError, TypeError):
             continue
     return None
 
 df = carregar_dados()
 if df is None:
-    st.error("Erro ao carregar os dados. Verifique se o arquivo 'dados_desenrola.csv' está presente e no formato correto.")
+    st.error("Erro ao carregar os dados. Verifique se o arquivo 'dados_desenrola.csv' está presente.")
     st.stop()
 
 # ============================================================
@@ -367,7 +356,7 @@ with col4:
     st.markdown(f'<div class="kpi-card"><div class="kpi-title">Instituições Atuantes</div><div class="kpi-value">{fmt_num(num_bancos)}</div></div>', unsafe_allow_html=True)
 
 # ============================================================
-# ABAS DE NAVEGAÇÃO (USANDO COLUNAS PARA MELHOR ESPAÇAMENTO)
+# ABAS DE NAVEGAÇÃO
 # ============================================================
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📈 Evolução e Projeções",
@@ -471,14 +460,20 @@ with tab3:
         fig_pie = px.pie(reg_data, names="regiao", values="volume_operacoes", hole=0.5,
                          title="Distribuição Regional do Volume",
                          color_discrete_sequence=[COR_SECUNDARIA, COR_ATENCAO, COR_SUCESSO, COR_ALERTA, "#64748B"])
-        st.plotly_chart(aplicar_layout_padrao(fig_pie, height=400), use_container_width=True)
+        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(aplicar_layout_padrao(fig_pie, height=450), use_container_width=True)
     with col_r2:
         st.markdown("### Evolução Regional (Heatmap)")
-        heat = df_filtrado.groupby(["regiao", df_filtrado["data_base"].dt.strftime("%m/%Y")])["volume_operacoes"].sum().reset_index()
-        pivot = heat.pivot(index="regiao", columns="data_base", values="volume_operacoes") / 1_000_000
-        fig_heat = px.imshow(pivot, aspect="auto", text_auto=".1f", color_continuous_scale="Blues")
-        fig_heat.update_layout(height=400)
-        st.plotly_chart(aplicar_layout_padrao(fig_heat, height=400), use_container_width=True)
+        # Prepara dados para heatmap
+        heat = df_filtrado.groupby(["regiao", df_filtrado["data_base"].dt.strftime("%Y-%m")])["volume_operacoes"].sum().reset_index()
+        heat.columns = ["regiao", "data_mes", "volume"]
+        pivot = heat.pivot(index="regiao", columns="data_mes", values="volume").fillna(0)
+        # Converte para milhões
+        pivot = pivot / 1_000_000
+        fig_heat = px.imshow(pivot, aspect="auto", text_auto=True, color_continuous_scale="Blues",
+                             labels=dict(x="Mês/Ano", y="Região", color="Volume (R$ milhões)"))
+        fig_heat.update_layout(height=450)
+        st.plotly_chart(aplicar_layout_padrao(fig_heat, height=450), use_container_width=True)
 
     st.markdown("### Top 3 Instituições por Estado")
     uf_banco = df_filtrado.groupby(["unidade_federacao", col_banco])["numero_operacoes"].sum().reset_index()
@@ -487,7 +482,7 @@ with tab3:
     top3_uf["rank"] = top3_uf.groupby("unidade_federacao").cumcount() + 1
     top3_uf["display"] = top3_uf.apply(lambda x: f"{x[col_banco]} ({fmt_num(x['numero_operacoes'])})", axis=1)
     pivot_uf = top3_uf.pivot_table(index="unidade_federacao", columns="rank", values="display", aggfunc="first").reset_index()
-    pivot_uf.columns = ["UF", "1º Lugar", "2º Lugar", "3º Lugar"]
+    pivot_uf.columns = ["UF", "🥇 1º Lugar", "🥈 2º Lugar", "🥉 3º Lugar"]
     st.dataframe(pivot_uf, use_container_width=True, hide_index=True)
 
     st.markdown("### Ticket Médio Cruzado")
@@ -507,12 +502,14 @@ with tab4:
         "tipo_banco": "first"
     }).reset_index()
     dispersao["ticket_medio"] = dispersao["volume_operacoes"] / dispersao["numero_operacoes"]
-    dispersao = dispersao[dispersao["numero_operacoes"] > 100]
+    # Filtra apenas bancos com operações relevantes para melhor visualização
+    dispersao = dispersao[dispersao["numero_operacoes"] > 1000]
     fig_disp = px.scatter(dispersao, x="numero_operacoes", y="ticket_medio",
                           color="tipo_banco", size="volume_operacoes", hover_name=col_banco,
                           labels={"numero_operacoes": "Operações", "ticket_medio": "Ticket Médio (R$)"},
                           color_discrete_map={"Banco Digital": "#10B981", "Banco Tradicional": "#2563EB",
                                               "Banco de Investimento": "#D97706", "Outras Instituições": "#64748B"})
+    fig_disp.update_traces(marker=dict(opacity=0.7, line=dict(width=1, color=COR_BORDA)))
     st.plotly_chart(aplicar_layout_padrao(fig_disp, height=500), use_container_width=True)
 
     st.markdown("### Comparativo: Digital vs Tradicional")
@@ -521,14 +518,20 @@ with tab4:
         "volume_operacoes": "sum"
     }).reset_index()
     comp["ticket_medio"] = comp["volume_operacoes"] / comp["numero_operacoes"]
-    comp["participacao"] = comp["numero_operacoes"] / comp["numero_operacoes"].sum() * 100
+    comp["participacao"] = (comp["numero_operacoes"] / comp["numero_operacoes"].sum() * 100).round(1)
 
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        fig_bar = px.bar(comp, x="tipo_banco", y="numero_operacoes", title="Operações por Segmento", color="tipo_banco", text_auto=".0f")
+        fig_bar = px.bar(comp, x="tipo_banco", y="numero_operacoes", title="Operações por Segmento",
+                         color="tipo_banco", text=comp["numero_operacoes"].apply(lambda x: fmt_num(x)),
+                         labels={"tipo_banco": "Segmento", "numero_operacoes": "Operações"})
+        fig_bar.update_traces(textposition="outside")
         st.plotly_chart(aplicar_layout_padrao(fig_bar, height=400), use_container_width=True)
     with col_c2:
-        fig_tick = px.bar(comp, x="tipo_banco", y="ticket_medio", title="Ticket Médio por Segmento", color="tipo_banco", text_auto=".2s")
+        fig_tick = px.bar(comp, x="tipo_banco", y="ticket_medio", title="Ticket Médio por Segmento",
+                          color="tipo_banco", text=comp["ticket_medio"].apply(lambda x: fmt_brl(x)),
+                          labels={"tipo_banco": "Segmento", "ticket_medio": "Ticket Médio (R$)"})
+        fig_tick.update_traces(textposition="outside")
         st.plotly_chart(aplicar_layout_padrao(fig_tick, height=400), use_container_width=True)
 
 # -------------------- TAB 5 --------------------
