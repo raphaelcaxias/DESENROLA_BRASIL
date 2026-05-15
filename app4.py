@@ -26,10 +26,6 @@ COR_FUNDO = "#F8FAFC"
 COR_TEXTO = "#1E293B"
 COR_SUBTEXTO = "#64748B"
 
-# Mapeamento de bancos digitais vs tradicionais
-BANCOS_DIGITAIS = ['NUBANK', 'INTER', 'C6 BANK', 'NUBANK - PRUDENCIAL', 'INTER - PRUDENCIAL', 'C6 BANK - PRUDENCIAL']
-BANCOS_TRADICIONAIS = ['ITAU', 'BRADESCO', 'SANTANDER', 'BB', 'CAIXA ECONÔMICA FEDERAL', 'BANCO DO BRASIL', 'BRADESCO - PRUDENCIAL', 'SANTANDER - PRUDENCIAL', 'ITAU - PRUDENCIAL', 'CAIXA ECONÔMICA FEDERAL - PRUDENCIAL', 'BB - PRUDENCIAL']
-
 # ============================================================
 # CSS
 # ============================================================
@@ -112,8 +108,9 @@ def fmt_num(n):
     return f"{int(n):,}".replace(",", ".")
 
 def calcular_hhi(data):
-    """Calcula o Índice Herfindahl-Hirschman para concentração de mercado"""
     total = data['numero_operacoes'].sum()
+    if total == 0:
+        return 0
     participacoes = (data['numero_operacoes'] / total) ** 2
     hhi = participacoes.sum() * 10000
     return hhi
@@ -202,7 +199,9 @@ with st.sidebar:
         
         st.markdown("---")
         st.markdown("### 📊 Tipos do programa")
-        st.markdown("🔵 Tipo 1: Faixa 1 (PF)\n🟢 Tipo 2: Faixa 2 (PF)\n🟡 Tipo 3: Pequenos Negócios")
+        st.markdown("🔵 **Tipo 1:** Faixa 1 (Pessoa Física)")
+        st.markdown("🟢 **Tipo 2:** Faixa 2 (Pessoa Física)")
+        st.markdown("🟡 **Tipo 3:** Pequenos Negócios")
 
 # ============================================================
 # MAIN
@@ -251,14 +250,14 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         """, unsafe_allow_html=True)
     
     # ===== ANÁLISE 1: HHI =====
-    st.markdown("""
-    <div class="section-header">
-        <h2>📊 Análise de Concentração de Mercado (HHI)</h2>
-        <span class="section-tag">Risco e Concorrência</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
+        st.markdown("""
+        <div class="section-header">
+            <h2>📊 Análise de Concentração de Mercado (HHI)</h2>
+            <span class="section-tag">Risco e Concorrência</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
         hhi_valor = calcular_hhi(df_filtrado)
         classificacao, cor = classificar_hhi(hhi_valor)
         
@@ -276,12 +275,12 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             <div class="info-card">
                 <div class="insight-title">📈 CLASSIFICAÇÃO</div>
                 <div class="insight-value">{cor} {classificacao}</div>
-                <div class="insight-text">{'Mercado competitivo' if hhi_valor < 1500 else 'Alto risco de concentração' if hhi_valor > 2500 else 'Concentração moderada'}</div>
+                <div class="insight-text">Mercado de renegociação de dívidas</div>
             </div>
             """, unsafe_allow_html=True)
     
     # ===== ANÁLISE 2: Digitais vs Tradicionais =====
-    if 'tipo_banco' in df_filtrado.columns:
+    if 'tipo_banco' in df_filtrado.columns and len(df_filtrado['tipo_banco'].unique()) > 0:
         st.markdown("""
         <div class="section-header">
             <h2>📱 Bancos Digitais vs Tradicionais</h2>
@@ -299,14 +298,16 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         with col1:
             fig_tipo_bar = px.bar(tipo_banco_data, x='tipo_banco', y='numero_operacoes',
                                   title='Operações por Tipo de Banco',
-                                  color='tipo_banco', color_discrete_map={'digital': '#00A86B', 'tradicional': '#0066CC', 'outros': '#94A3B8'},
+                                  color='tipo_banco', 
+                                  color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'},
                                   text_auto='.0f')
             fig_tipo_bar.update_layout(template="plotly_white", height=400)
             st.plotly_chart(fig_tipo_bar, use_container_width=True)
         with col2:
             fig_tipo_ticket = px.bar(tipo_banco_data, x='tipo_banco', y='ticket_medio',
                                      title='Ticket Médio por Tipo de Banco (R$)',
-                                     color='tipo_banco', color_discrete_map={'digital': '#00A86B', 'tradicional': '#0066CC', 'outros': '#94A3B8'},
+                                     color='tipo_banco',
+                                     color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'},
                                      text_auto='.2s')
             fig_tipo_ticket.update_layout(template="plotly_white", height=400)
             st.plotly_chart(fig_tipo_ticket, use_container_width=True)
@@ -326,14 +327,16 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         top3_por_uf['ranking'] = top3_por_uf.groupby('unidade_federacao').cumcount() + 1
         top3_por_uf['exibicao'] = top3_por_uf.apply(lambda x: f"{x['ranking']}º - {x['nome_conglomerado_financeiro']} ({fmt_num(x['numero_operacoes'])})", axis=1)
         
-        lideranca = top3_por_uf[top3_por_uf['ranking'] == 1].groupby('nome_conglomerado_financeiro').size().sort_values(ascending=False)
-        st.info(f"🏆 **{lideranca.index[0]}** lidera em {lideranca.iloc[0]} estados, seguido por **{lideranca.index[1] if len(lideranca) > 1 else 'N/A'}** com {lideranca.iloc[1] if len(lideranca) > 1 else 0} estados")
-        
-        tabela_lideranca = top3_por_uf.pivot_table(index='unidade_federacao', columns='ranking', values='exibicao', aggfunc='first').reset_index()
-        st.dataframe(tabela_lideranca, use_container_width=True, hide_index=True)
+        if len(top3_por_uf) > 0:
+            lideranca = top3_por_uf[top3_por_uf['ranking'] == 1].groupby('nome_conglomerado_financeiro').size().sort_values(ascending=False)
+            if len(lideranca) > 0:
+                st.info(f"🏆 **{lideranca.index[0]}** lidera em {lideranca.iloc[0]} estados, seguido por **{lideranca.index[1] if len(lideranca) > 1 else 'N/A'}** com {lideranca.iloc[1] if len(lideranca) > 1 else 0} estados")
+            
+            tabela_lideranca = top3_por_uf.pivot_table(index='unidade_federacao', columns='ranking', values='exibicao', aggfunc='first').reset_index()
+            st.dataframe(tabela_lideranca, use_container_width=True, hide_index=True)
     
-    # ===== ANÁLISE 4: Evolução com Marco Regulatório =====
-    if 'data_base' in df_filtrado.columns:
+    # ===== ANÁLISE 4: Evolução Mensal (CORRIGIDA - sem vline) =====
+    if 'data_base' in df_filtrado.columns and len(df_filtrado['data_base'].dropna()) > 1:
         st.markdown("""
         <div class="section-header">
             <h2>📈 Evolução Mensal do Programa</h2>
@@ -346,16 +349,33 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             'volume_operacoes': 'sum'
         }).reset_index().sort_values('data_base')
         
-        fig_evolucao = go.Figure()
-        fig_evolucao.add_trace(go.Scatter(x=evolucao['data_base'], y=evolucao['volume_operacoes'],
-                                          mode='lines+markers', name='Volume',
-                                          line=dict(width=3, color=COR_SECUNDARIA),
-                                          marker=dict(size=6, color=COR_PRIMARIA)))
-        fig_evolucao.add_vline(x=pd.Timestamp('2024-04-01'), line_dash="dash", line_color=COR_ALERTA,
-                               annotation_text="MP 1.213/2024 - Inclusão Pequenos Negócios", annotation_position="top")
+        fig_evolucao = px.line(evolucao, x='data_base', y='volume_operacoes', 
+                               title='Volume Renegociado por Mês (R$)',
+                               markers=True, line_shape='linear')
         fig_evolucao.update_layout(template="plotly_white", height=450,
                                    xaxis_title="Mês", yaxis_title="Volume (R$)",
-                                   title="Volume Renegociado por Mês com Marco Regulatório")
+                                   hovermode='x unified')
+        fig_evolucao.update_traces(line=dict(width=3, color=COR_SECUNDARIA), 
+                                   marker=dict(size=6, color=COR_PRIMARIA))
+        
+        # Adicionar anotação manual em vez de vline
+        df_mp = evolucao[evolucao['data_base'] >= pd.Timestamp('2024-04-01')]
+        if len(df_mp) > 0:
+            fig_evolucao.add_annotation(
+                x=pd.Timestamp('2024-04-01'),
+                y=evolucao['volume_operacoes'].max() * 0.9,
+                text="📅 MP 1.213/2024<br>Inclusão Pequenos Negócios",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=COR_ALERTA,
+                font=dict(size=10, color=COR_ALERTA),
+                bgcolor="white",
+                bordercolor=COR_ALERTA,
+                borderwidth=1
+            )
+        
         st.plotly_chart(fig_evolucao, use_container_width=True)
     
     # ===== ANÁLISE 5: Gráfico de Dispersão =====
@@ -373,21 +393,25 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         }).reset_index()
         dispersao_data['ticket_medio'] = dispersao_data['volume_operacoes'] / dispersao_data['numero_operacoes']
         dispersao_data = dispersao_data[dispersao_data['numero_operacoes'] > 1000]
-        dispersao_data['tipo'] = dispersao_data['nome_conglomerado_financeiro'].apply(classificar_banco)
-        
-        fig_dispersao = px.scatter(dispersao_data, x='numero_operacoes', y='ticket_medio', 
-                                   color='tipo', size='numero_operacoes', hover_name='nome_conglomerado_financeiro',
-                                   title='Relação entre Volume de Operações e Ticket Médio',
-                                   labels={'numero_operacoes': 'Operações', 'ticket_medio': 'Ticket Médio (R$)'},
-                                   color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'})
-        fig_dispersao.update_layout(template="plotly_white", height=500)
-        st.plotly_chart(fig_dispersao, use_container_width=True)
         
         if len(dispersao_data) > 1:
+            dispersao_data['tipo'] = dispersao_data['nome_conglomerado_financeiro'].apply(classificar_banco)
+            
+            fig_dispersao = px.scatter(dispersao_data, x='numero_operacoes', y='ticket_medio', 
+                                       color='tipo', size='numero_operacoes', hover_name='nome_conglomerado_financeiro',
+                                       title='Relação entre Volume de Operações e Ticket Médio',
+                                       labels={'numero_operacoes': 'Operações', 'ticket_medio': 'Ticket Médio (R$)'},
+                                       color_discrete_map={'digital': COR_DESTAQUE, 'tradicional': COR_SECUNDARIA, 'outros': '#94A3B8'})
+            fig_dispersao.update_layout(template="plotly_white", height=500)
+            st.plotly_chart(fig_dispersao, use_container_width=True)
+            
+            # Correlação manual
             x = dispersao_data['numero_operacoes'].values
             y = dispersao_data['ticket_medio'].values
             correlacao = np.corrcoef(x, y)[0, 1] if len(x) > 1 else 0
             st.caption(f"📊 Correlação entre Operações e Ticket Médio: **{correlacao:.2f}** - {'Correlação positiva' if correlacao > 0.3 else 'Correlação negativa' if correlacao < -0.3 else 'Baixa correlação'}")
+        else:
+            st.info("Dados insuficientes para análise de dispersão (menos de 2 bancos com mais de 1000 operações)")
     
     # ===== GRÁFICO: Por Tipo =====
     if 'tipo_desenrola' in df_filtrado.columns:
@@ -398,19 +422,26 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         </div>
         """, unsafe_allow_html=True)
         
-        tipo_data = df_filtrado.groupby('tipo_desenrola').agg({'numero_operacoes': 'sum', 'volume_operacoes': 'sum'}).reset_index()
+        tipo_data = df_filtrado.groupby('tipo_desenrola').agg({
+            'numero_operacoes': 'sum',
+            'volume_operacoes': 'sum'
+        }).reset_index()
         tipo_data['ticket_medio'] = tipo_data['volume_operacoes'] / tipo_data['numero_operacoes']
         
         col1, col2 = st.columns(2)
         with col1:
             fig_pie = px.pie(tipo_data, names='tipo_desenrola', values='numero_operacoes', hole=0.4,
-                            title='Distribuição de Operações', color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE])
+                            title='Distribuição de Operações', 
+                            color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE])
             fig_pie.update_layout(template="plotly_white", height=420)
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig_pie, use_container_width=True)
         with col2:
             fig_ticket = px.bar(tipo_data, x='tipo_desenrola', y='ticket_medio',
-                               title='Ticket Médio por Tipo (R$)', color='tipo_desenrola',
-                               color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE], text_auto='.2s')
+                               title='Ticket Médio por Tipo (R$)', 
+                               color='tipo_desenrola',
+                               color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE], 
+                               text_auto='.2s')
             fig_ticket.update_layout(template="plotly_white", height=420)
             st.plotly_chart(fig_ticket, use_container_width=True)
     
@@ -423,12 +454,17 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         </div>
         """, unsafe_allow_html=True)
         
-        uf_data = df_filtrado.groupby('unidade_federacao').agg({'numero_operacoes': 'sum', 'volume_operacoes': 'sum'}).reset_index()
+        uf_data = df_filtrado.groupby('unidade_federacao').agg({
+            'numero_operacoes': 'sum',
+            'volume_operacoes': 'sum'
+        }).reset_index()
         uf_data['ticket_medio'] = uf_data['volume_operacoes'] / uf_data['numero_operacoes']
         uf_data = uf_data.sort_values('numero_operacoes', ascending=False).head(10)
         
-        fig_uf = px.bar(uf_data, x='unidade_federacao', y='numero_operacoes', color='numero_operacoes',
-                       title='Operações por UF', color_continuous_scale='Blues')
+        fig_uf = px.bar(uf_data, x='unidade_federacao', y='numero_operacoes', 
+                        color='numero_operacoes',
+                        title='Operações por UF', 
+                        color_continuous_scale='Blues')
         fig_uf.update_layout(template="plotly_white", height=450)
         st.plotly_chart(fig_uf, use_container_width=True)
     
@@ -443,9 +479,12 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         
         banco_data = df_filtrado.groupby('nome_conglomerado_financeiro')['numero_operacoes'].sum().sort_values(ascending=False).head(10).reset_index()
         banco_data.columns = ['Instituição', 'Operações']
+        
         fig_banco = px.bar(banco_data, x='Operações', y='Instituição', orientation='h',
-                          title='Top 10 Instituições por Renegociações', color='Operações',
-                          color_continuous_scale='Viridis', text='Operações')
+                          title='Top 10 Instituições por Renegociações', 
+                          color='Operações',
+                          color_continuous_scale='Viridis', 
+                          text='Operações')
         fig_banco.update_layout(template="plotly_white", height=500)
         fig_banco.update_traces(texttemplate='%{text:,}', textposition='outside')
         st.plotly_chart(fig_banco, use_container_width=True)
@@ -458,8 +497,8 @@ if df_filtrado is not None and len(df_filtrado) > 0:
     </div>
     """, unsafe_allow_html=True)
     
-    banco_lider = df_filtrado.groupby('nome_conglomerado_financeiro')['numero_operacoes'].sum().idxmax() if 'nome_conglomerado_financeiro' in df_filtrado.columns else "N/A"
-    uf_lider = df_filtrado.groupby('unidade_federacao')['volume_operacoes'].sum().idxmax() if 'unidade_federacao' in df_filtrado.columns else "N/A"
+    banco_lider = df_filtrado.groupby('nome_conglomerado_financeiro')['numero_operacoes'].sum().idxmax() if 'nome_conglomerado_financeiro' in df_filtrado.columns and len(df_filtrado['nome_conglomerado_financeiro'].unique()) > 0 else "N/A"
+    uf_lider = df_filtrado.groupby('unidade_federacao')['volume_operacoes'].sum().idxmax() if 'unidade_federacao' in df_filtrado.columns and len(df_filtrado['unidade_federacao'].unique()) > 0 else "N/A"
     
     st.markdown(f"""
     <div class="insight-card" style="background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA}); color: white; border: none;">
