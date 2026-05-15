@@ -72,67 +72,54 @@ html, body, .stApp {{
     color: {COR_TEXTO} !important;
 }}
 
-.block-container {{ padding: 1.5rem 2rem !important; max-width: 1400px !important; margin: 0 auto !important; }}
+.block-container {{ padding: 1rem 1.5rem !important; max-width: 1400px !important; margin: 0 auto !important; }}
 
 /* Header */
 .main-header {{
     background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA});
-    border-radius: 20px;
-    padding: 1.5rem 2rem;
-    margin-bottom: 2rem;
+    border-radius: 16px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
 }}
-.main-header h1 {{ font-size: 1.8rem; font-weight: 800; color: white; margin: 0; }}
-.main-header p {{ color: rgba(255,255,255,0.9); font-size: 0.85rem; margin-top: 0.5rem; }}
-.header-badges {{ display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }}
-.header-badge {{ background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); padding: 0.2rem 0.7rem; border-radius: 20px; font-size: 0.65rem; font-weight: 500; color: white; }}
+.main-header h1 {{ font-size: 1.6rem; font-weight: 800; color: white; margin: 0; }}
+.main-header p {{ color: rgba(255,255,255,0.9); font-size: 0.8rem; margin-top: 0.3rem; }}
+.header-badges {{ display: flex; gap: 0.4rem; margin-top: 0.8rem; flex-wrap: wrap; }}
+.header-badge {{ background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.6rem; font-weight: 500; color: white; }}
 
 /* KPIs */
-.kpi-grid {{ display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }}
-.kpi-card {{ flex: 1; min-width: 160px; background: {COR_CARD}; border-radius: 16px; padding: 1.2rem; border: 1px solid {COR_BORDA}; border-bottom: 3px solid {COR_PRIMARIA}; transition: transform 0.2s; }}
-.kpi-card:hover {{ transform: translateY(-3px); }}
-.kpi-icon {{ font-size: 1.6rem; margin-bottom: 0.5rem; }}
-.kpi-label {{ font-size: 0.65rem; text-transform: uppercase; color: {COR_SUBTEXTO}; font-weight: 600; }}
-.kpi-value {{ font-size: 1.6rem; font-weight: 800; color: {COR_TEXTO}; margin: 0.4rem 0; }}
-.kpi-sub {{ font-size: 0.6rem; color: {COR_SUBTEXTO}; }}
+.kpi-grid {{ display: flex; gap: 0.8rem; margin-bottom: 1.5rem; flex-wrap: wrap; }}
+.kpi-card {{ flex: 1; min-width: 140px; background: {COR_CARD}; border-radius: 14px; padding: 0.8rem; border: 1px solid {COR_BORDA}; border-bottom: 3px solid {COR_PRIMARIA}; transition: transform 0.2s; }}
+.kpi-card:hover {{ transform: translateY(-2px); }}
+.kpi-icon {{ font-size: 1.3rem; margin-bottom: 0.3rem; }}
+.kpi-label {{ font-size: 0.6rem; text-transform: uppercase; color: {COR_SUBTEXTO}; font-weight: 600; }}
+.kpi-value {{ font-size: 1.3rem; font-weight: 800; color: {COR_TEXTO}; margin: 0.3rem 0; }}
+.kpi-sub {{ font-size: 0.55rem; color: {COR_SUBTEXTO}; }}
 
 /* Seções */
-.section-header {{ display: flex; align-items: center; justify-content: space-between; margin: 1.5rem 0 1rem 0; border-bottom: 2px solid {COR_BORDA}; padding-bottom: 0.5rem; }}
-.section-header h2 {{ font-size: 1.1rem; font-weight: 700; color: {COR_TEXTO}; margin: 0; }}
-.section-badge {{ background: {COR_PRIMARIA}; color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.6rem; font-weight: 600; }}
+.section-header {{ display: flex; align-items: center; justify-content: space-between; margin: 1rem 0 0.8rem 0; border-bottom: 2px solid {COR_BORDA}; padding-bottom: 0.4rem; }}
+.section-header h2 {{ font-size: 1rem; font-weight: 700; color: {COR_TEXTO}; margin: 0; }}
+.section-badge {{ background: {COR_PRIMARIA}; color: white; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.55rem; font-weight: 600; }}
 
 /* Insight cards */
-.insight-card {{ background: {COR_CARD}; border-radius: 14px; padding: 1rem; margin-bottom: 0.8rem; border-left: 4px solid {COR_DESTAQUE}; }}
-.insight-title {{ font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: {COR_SECUNDARIA}; }}
-.insight-value {{ font-size: 1.2rem; font-weight: 800; color: {COR_TEXTO}; margin: 0.4rem 0; }}
-.insight-text {{ font-size: 0.7rem; color: {COR_SUBTEXTO}; }}
+.insight-card {{ background: {COR_CARD}; border-radius: 12px; padding: 0.8rem; margin-bottom: 0.6rem; border-left: 3px solid {COR_DESTAQUE}; }}
+.insight-title {{ font-size: 0.55rem; font-weight: 700; text-transform: uppercase; color: {COR_SECUNDARIA}; }}
+.insight-value {{ font-size: 1.1rem; font-weight: 800; color: {COR_TEXTO}; margin: 0.3rem 0; }}
+.insight-text {{ font-size: 0.65rem; color: {COR_SUBTEXTO}; }}
 
 /* Tabelas */
-[data-testid="stDataFrame"] th {{ background: {COR_SECUNDARIA} !important; color: white !important; padding: 8px 10px !important; font-size: 0.7rem !important; }}
-[data-testid="stDataFrame"] td {{ background: {COR_CARD} !important; color: {COR_TEXTO} !important; padding: 6px 10px !important; font-size: 0.65rem !important; }}
-[data-testid="stDataFrame"] tr:hover td {{ background: {COR_BORDA} !important; }}
-
-/* Botões */
-.stDownloadButton button, .stButton button {{
-    background: linear-gradient(135deg, {COR_PRIMARIA}, {COR_SECUNDARIA}) !important;
-    color: white !important;
-    border-radius: 40px !important;
-    padding: 0.4rem 0.8rem !important;
-    font-size: 0.7rem !important;
-    transition: all 0.3s ease !important;
-}}
-
-.stDownloadButton button:hover, .stButton button:hover {{ transform: scale(1.02); }}
+[data-testid="stDataFrame"] th {{ background: {COR_SECUNDARIA} !important; color: white !important; padding: 6px 8px !important; font-size: 0.65rem !important; }}
+[data-testid="stDataFrame"] td {{ background: {COR_CARD} !important; color: {COR_TEXTO} !important; padding: 5px 8px !important; font-size: 0.6rem !important; }}
 
 /* Sidebar */
-section[data-testid="stSidebar"] {{ background: {COR_CARD} !important; border-right: 1px solid {COR_BORDA} !important; }}
+section[data-testid="stSidebar"] {{ background: {COR_CARD} !important; border-right: 1px solid {COR_BORDA} !important; padding: 0.8rem !important; }}
 
 /* Footer */
-.footer {{ text-align: center; padding: 1rem; margin-top: 1.5rem; border-top: 1px solid {COR_BORDA}; font-size: 0.6rem; color: {COR_SUBTEXTO}; }}
+.footer {{ text-align: center; padding: 0.8rem; margin-top: 1rem; border-top: 1px solid {COR_BORDA}; font-size: 0.55rem; color: {COR_SUBTEXTO}; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# FUNÇÕES CORRIGIDAS
+# FUNÇÕES
 # ============================================================
 def fmt_brl(valor):
     if pd.isna(valor) or valor == 0:
@@ -148,31 +135,24 @@ def fmt_num(n):
         return "0"
     return f"{int(n):,}".replace(",", ".")
 
-def normalizar_texto(texto):
-    if pd.isna(texto):
-        return texto
-    texto = str(texto).upper().strip()
-    texto = unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode('ASCII')
-    return texto
+def fmt_percentual(valor, total):
+    if total == 0:
+        return "0%"
+    return f"{(valor/total*100):.1f}%"
 
 def classificar_banco_corrigido(nome):
-    """Classificação melhorada - corrige PRUDENCIAL e detecta mais bancos"""
     nome_upper = str(nome).upper().strip()
     nome_upper = re.sub(r'\s*-\s*PRUDENCIAL$', '', nome_upper)
     
-    # Bancos Digitais
     if any(digital in nome_upper for digital in ['NUBANK', 'INTER', 'C6']):
         return 'digital'
-    # Bancos Tradicionais
     if any(tradicional in nome_upper for tradicional in ['ITAU', 'BRADESCO', 'SANTANDER', 'BB', 'CAIXA', 'BANCO DO BRASIL']):
         return 'tradicional'
-    # Outros bancos relevantes
     if any(outro in nome_upper for outro in ['BTG', 'BMG', 'BANRISUL', 'VOTORANTIM', 'BCO DO NORDESTE', 'BCO DO EST']):
         return 'outros'
     return 'outros'
 
 def agrupar_por_regiao(uf):
-    """Mapeia UF para macrorregião"""
     regioes = {
         'NORTE': ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
         'NORDESTE': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
@@ -185,8 +165,7 @@ def agrupar_por_regiao(uf):
             return regiao
     return 'OUTROS'
 
-def calcular_hhi_ponderado(data, col_valor='numero_operacoes'):
-    """HHI com opção de calcular por operações ou volume"""
+def calcular_hhi(data, col_valor='numero_operacoes'):
     total = data[col_valor].sum()
     if total == 0:
         return 0
@@ -214,14 +193,10 @@ def carregar_dados():
                 )
             if 'data_base' in df.columns:
                 df['data_base'] = pd.to_datetime(df['data_base'].astype(str), format='%Y%m', errors='coerce')
-                df['ano_mes'] = df['data_base'].dt.strftime('%Y-%m')
             
-            # Classificação de bancos corrigida
             if 'nome_conglomerado_financeiro' in df.columns:
                 df['tipo_banco'] = df['nome_conglomerado_financeiro'].apply(classificar_banco_corrigido)
-                df['banco_normalizado'] = df['nome_conglomerado_financeiro'].apply(classificar_banco_corrigido)
             
-            # Adicionar macrorregião
             if 'unidade_federacao' in df.columns:
                 df['macrorregiao'] = df['unidade_federacao'].apply(agrupar_por_regiao)
             
@@ -238,7 +213,7 @@ with st.spinner("🔄 Carregando dados..."):
     df, encoding = carregar_dados()
 
 if df is None:
-    st.error("❌ Erro ao carregar os dados.")
+    st.error("❌ Erro ao carregar os dados. Verifique o arquivo 'dados_desenrola.csv'")
     st.stop()
 
 # ============================================================
@@ -248,9 +223,13 @@ with st.sidebar:
     st.markdown("### 🎛️ Controles")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("☀️ Claro"): st.session_state.tema = 'claro'; st.rerun()
+        if st.button("☀️ Claro", use_container_width=True):
+            st.session_state.tema = 'claro'
+            st.rerun()
     with col2:
-        if st.button("🌙 Escuro"): st.session_state.tema = 'escuro'; st.rerun()
+        if st.button("🌙 Escuro", use_container_width=True):
+            st.session_state.tema = 'escuro'
+            st.rerun()
     
     st.markdown("---")
     st.markdown("### 🎯 Filtros")
@@ -289,8 +268,10 @@ with st.sidebar:
                                    (df_filtrado['data_base'].dt.date <= periodo_filtro[1])]
     
     st.markdown("---")
-    st.markdown("### 📊 Tipos")
-    st.markdown("🔵 Tipo 1: Faixa 1 (PF)\n🟢 Tipo 2: Faixa 2 (PF)\n🟡 Tipo 3: Pequenos Negócios")
+    st.markdown("### 📊 Tipos do programa")
+    st.markdown("🔵 Tipo 1: Faixa 1 (PF)")
+    st.markdown("🟢 Tipo 2: Faixa 2 (PF)")
+    st.markdown("🟡 Tipo 3: Pequenos Negócios")
 
 # ============================================================
 # HEADER
@@ -330,12 +311,12 @@ if df_filtrado is not None and len(df_filtrado) > 0:
     with col4:
         st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🏛️</div><div class="kpi-label">INSTITUIÇÕES</div><div class="kpi-value">{fmt_num(num_bancos)}</div><div class="kpi-sub">bancos</div></div>', unsafe_allow_html=True)
     
-    # ===== HHI CORRIGIDO (operação e volume) =====
+    # ===== HHI =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>📊 Concentração de Mercado (HHI)</h2><span class="section-badge">Risco</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div class="section-header"><h2>📊 Concentração de Mercado (HHI)</h2><span class="section-badge">Risco</span></div>', unsafe_allow_html=True)
         
-        hhi_operacoes = calcular_hhi_ponderado(df_filtrado, 'numero_operacoes')
-        hhi_volume = calcular_hhi_ponderado(df_filtrado, 'volume_operacoes')
+        hhi_operacoes = calcular_hhi(df_filtrado, 'numero_operacoes')
+        hhi_volume = calcular_hhi(df_filtrado, 'volume_operacoes')
         
         col1, col2 = st.columns(2)
         with col1:
@@ -343,28 +324,24 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         with col2:
             st.markdown(f'<div class="insight-card"><div class="insight-title">💰 HHI (Volume)</div><div class="insight-value">{hhi_volume:.0f}</div><div class="insight-text">Concentração por valor financeiro</div></div>', unsafe_allow_html=True)
     
-    # ===== ANÁLISE POR MACRORREGIÃO (NOVO) =====
+    # ===== ANÁLISE POR MACRORREGIÃO =====
     if 'macrorregiao' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>🗺️ Análise por Macrorregião</h2><span class="section-badge">Geográfico</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div class="section-header"><h2>🗺️ Análise por Macrorregião</h2><span class="section-badge">Geográfico</span></div>', unsafe_allow_html=True)
         
-        regiao_data = df_filtrado.groupby('macrorregiao').agg({
-            'numero_operacoes': 'sum',
-            'volume_operacoes': 'sum'
-        }).reset_index()
+        regiao_data = df_filtrado.groupby('macrorregiao')['volume_operacoes'].sum().reset_index()
         regiao_data = regiao_data[regiao_data['macrorregiao'] != 'OUTROS']
         
         fig_regiao = px.bar(regiao_data, x='macrorregiao', y='volume_operacoes',
                            title='Volume Renegociado por Macrorregião (R$)',
                            color='macrorregiao',
-                           color_discrete_map={
-                               'NORTE': COR_NORTE, 'NORDESTE': COR_NORDESTE,
-                               'CENTRO_OESTE': COR_CENTRO_OESTE, 'SUDESTE': COR_SUDESTE, 'SUL': COR_SUL})
+                           color_discrete_map={'NORTE': COR_NORTE, 'NORDESTE': COR_NORDESTE,
+                                               'CENTRO_OESTE': COR_CENTRO_OESTE, 'SUDESTE': COR_SUDESTE, 'SUL': COR_SUL})
         fig_regiao.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
         st.plotly_chart(fig_regiao, use_container_width=True)
     
-    # ===== EVOLUÇÃO MENSAL (operação + volume) =====
-    if 'data_base' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>📈 Evolução Mensal</h2><span class="section-badge">Temporal</span></div>""", unsafe_allow_html=True)
+    # ===== EVOLUÇÃO MENSAL =====
+    if 'data_base' in df_filtrado.columns and len(df_filtrado['data_base'].dropna()) > 1:
+        st.markdown('<div class="section-header"><h2>📈 Evolução Mensal</h2><span class="section-badge">Temporal</span></div>', unsafe_allow_html=True)
         
         evolucao = df_filtrado.groupby('data_base').agg({
             'numero_operacoes': 'sum',
@@ -374,20 +351,20 @@ if df_filtrado is not None and len(df_filtrado) > 0:
         tab1, tab2 = st.tabs(["💰 Volume (R$)", "📋 Operações"])
         
         with tab1:
-            fig_vol = px.line(evolucao, x='data_base', y='volume_operacoes', markers=True)
-            fig_vol.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
-            fig_vol.update_traces(line=dict(width=3, color=COR_PRIMARIA))
+            fig_vol = px.line(evolucao, x='data_base', y='volume_operacoes', markers=True, title='Evolução do Volume por Mês')
+            fig_vol.update_layout(template="plotly_white", height=350, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
+            fig_vol.update_traces(line=dict(width=2, color=COR_PRIMARIA))
             st.plotly_chart(fig_vol, use_container_width=True)
         
         with tab2:
-            fig_op = px.line(evolucao, x='data_base', y='numero_operacoes', markers=True)
-            fig_op.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
-            fig_op.update_traces(line=dict(width=3, color=COR_SECUNDARIA))
+            fig_op = px.line(evolucao, x='data_base', y='numero_operacoes', markers=True, title='Evolução das Operações por Mês')
+            fig_op.update_layout(template="plotly_white", height=350, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
+            fig_op.update_traces(line=dict(width=2, color=COR_SECUNDARIA))
             st.plotly_chart(fig_op, use_container_width=True)
     
-    # ===== ANÁLISE POR TIPO COM DESTAQUE TIPO 3 =====
+    # ===== ANÁLISE POR TIPO =====
     if 'tipo_desenrola' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>📊 Análise por Tipo do Programa</h2><span class="section-badge">Distribuição</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div class="section-header"><h2>📊 Análise por Tipo do Programa</h2><span class="section-badge">Distribuição</span></div>', unsafe_allow_html=True)
         
         tipo_data = df_filtrado.groupby('tipo_desenrola').agg({
             'numero_operacoes': 'sum',
@@ -400,34 +377,35 @@ if df_filtrado is not None and len(df_filtrado) > 0:
             fig_pie = px.pie(tipo_data, names='tipo_desenrola', values='numero_operacoes', hole=0.4,
                             title='Distribuição de Operações',
                             color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE])
-            fig_pie.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD)
+            fig_pie.update_layout(template="plotly_white", height=380, paper_bgcolor=COR_CARD)
             st.plotly_chart(fig_pie, use_container_width=True)
             
-            # Destaque Tipo 3
+            # Destaque Tipo 3 - CORRIGIDO
             tipo3 = tipo_data[tipo_data['tipo_desenrola'] == 3]
             if len(tipo3) > 0:
-                st.info(f"🟡 **Tipo 3 (Pequenos Negócios)** representa apenas {fmt_percentual(tipo3['numero_operacoes'].iloc[0], total_operacoes)} das operações, mas {fmt_percentual(tipo3['volume_operacoes'].iloc[0], total_volume)} do volume financeiro")
+                pct_oper = (tipo3['numero_operacoes'].iloc[0] / total_operacoes) * 100
+                pct_vol = (tipo3['volume_operacoes'].iloc[0] / total_volume) * 100
+                st.info(f"🟡 **Tipo 3 (Pequenos Negócios)** representa {pct_oper:.1f}% das operações, mas {pct_vol:.1f}% do volume financeiro")
         
         with col2:
             fig_ticket = px.bar(tipo_data, x='tipo_desenrola', y='ticket_medio',
                                title='Ticket Médio por Tipo (R$)',
                                color='tipo_desenrola',
                                color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE])
-            fig_ticket.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD)
+            fig_ticket.update_layout(template="plotly_white", height=380, paper_bgcolor=COR_CARD)
             st.plotly_chart(fig_ticket, use_container_width=True)
     
-    # ===== PARTICIPAÇÃO POR BANCO (CORRIGIDO) =====
+    # ===== PARTICIPAÇÃO POR BANCO =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>📊 Participação por Instituição</h2><span class="section-badge">Market Share</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div class="section-header"><h2>📊 Participação por Instituição</h2><span class="section-badge">Market Share</span></div>', unsafe_allow_html=True)
         
         participacao = df_filtrado.groupby('nome_conglomerado_financeiro')['numero_operacoes'].sum().sort_values(ascending=False).head(10).reset_index()
         participacao.columns = ['Instituição', 'Operações']
         
-        # CORREÇÃO: usar valor numérico, não string
         fig_participacao = px.pie(participacao.head(7), names='Instituição', values='Operações', hole=0.4,
                                    title='Top 7 Instituições - Market Share',
                                    color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE, COR_ALERTA, '#8B5CF6', '#EC4899', '#06B6D4'])
-        fig_participacao.update_layout(template="plotly_white", height=450, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
+        fig_participacao.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD, font=dict(color=COR_TEXTO))
         st.plotly_chart(fig_participacao, use_container_width=True)
         
         participacao['Participação'] = (participacao['Operações'] / participacao['Operações'].sum() * 100).round(1).astype(str) + '%'
@@ -436,28 +414,48 @@ if df_filtrado is not None and len(df_filtrado) > 0:
     
     # ===== RANKING ESTADOS =====
     if 'unidade_federacao' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>🗺️ Top 10 Estados</h2><span class="section-badge">Ranking</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div class="section-header"><h2>🗺️ Top 10 Estados</h2><span class="section-badge">Ranking</span></div>', unsafe_allow_html=True)
         
         uf_data = df_filtrado.groupby('unidade_federacao')['numero_operacoes'].sum().sort_values(ascending=False).head(10).reset_index()
         uf_data.columns = ['UF', 'Operações']
         
         fig_uf = px.bar(uf_data, x='UF', y='Operações', title='Operações por UF', color='Operações', color_continuous_scale='Blues')
-        fig_uf.update_layout(template="plotly_white", height=450, paper_bgcolor=COR_CARD)
+        fig_uf.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD)
         st.plotly_chart(fig_uf, use_container_width=True)
     
     # ===== RANKING BANCOS =====
     if 'nome_conglomerado_financeiro' in df_filtrado.columns:
-        st.markdown("""<div class="section-header"><h2>🏦 Top 10 Instituições</h2><span class="section-badge">Ranking</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div class="section-header"><h2>🏦 Top 10 Instituições</h2><span class="section-badge">Ranking</span></div>', unsafe_allow_html=True)
         
         banco_data = df_filtrado.groupby('nome_conglomerado_financeiro')['numero_operacoes'].sum().sort_values(ascending=False).head(10).reset_index()
         banco_data.columns = ['Instituição', 'Operações']
         
-        fig_banco = px.bar(banco_data, x='Operações', y='Instituição', orientation='h', title='Top 10 Instituições', color='Operações', color_continuous_scale='Viridis')
-        fig_banco.update_layout(template="plotly_white", height=500, paper_bgcolor=COR_CARD)
+        fig_banco = px.bar(banco_data, x='Operações', y='Instituição', orientation='h', 
+                          title='Top 10 Instituições por Renegociações', color='Operações', color_continuous_scale='Viridis')
+        fig_banco.update_layout(template="plotly_white", height=450, paper_bgcolor=COR_CARD)
         st.plotly_chart(fig_banco, use_container_width=True)
     
+    # ===== TICKET MÉDIO POR ESTADO =====
+    if 'unidade_federacao' in df_filtrado.columns:
+        st.markdown('<div class="section-header"><h2>🎫 Ticket Médio por Estado</h2><span class="section-badge">Ranking</span></div>', unsafe_allow_html=True)
+        
+        ticket_uf = df_filtrado.groupby('unidade_federacao').agg({
+            'numero_operacoes': 'sum',
+            'volume_operacoes': 'sum'
+        }).reset_index()
+        ticket_uf['ticket_medio'] = ticket_uf['volume_operacoes'] / ticket_uf['numero_operacoes']
+        ticket_uf = ticket_uf.sort_values('ticket_medio', ascending=False).head(10)
+        ticket_uf['ticket_formatado'] = ticket_uf['ticket_medio'].apply(fmt_brl)
+        
+        fig_ticket_uf = px.bar(ticket_uf, x='unidade_federacao', y='ticket_medio',
+                               title='Top 10 Estados por Ticket Médio (R$)',
+                               color='ticket_medio', color_continuous_scale='Greens',
+                               text='ticket_formatado')
+        fig_ticket_uf.update_layout(template="plotly_white", height=400, paper_bgcolor=COR_CARD)
+        st.plotly_chart(fig_ticket_uf, use_container_width=True)
+    
     # ===== CONCLUSÃO =====
-    st.markdown("""<div class="section-header"><h2>📈 Conclusão</h2><span class="section-badge">Resumo</span></div>""", unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>📈 Conclusão</h2><span class="section-badge">Resumo</span></div>', unsafe_allow_html=True)
     
     banco_lider = df_filtrado.groupby('nome_conglomerado_financeiro')['numero_operacoes'].sum().idxmax() if 'nome_conglomerado_financeiro' in df_filtrado.columns else "N/A"
     
@@ -495,4 +493,4 @@ Fonte: Banco Central do Brasil (SCR)"""
     """, unsafe_allow_html=True)
 
 else:
-    st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
+    st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados. Ajuste os filtros para visualizar os dados.")
