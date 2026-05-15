@@ -7,10 +7,10 @@ from io import BytesIO
 from datetime import datetime
 
 # ============================================================
-# CONFIGURA«√O
+# CONFIGURA√á√ÉO
 # ============================================================
 st.set_page_config(
-    page_title="Desenrola Brasil - An·lise de RenegociaÁ„o",
+    page_title="Desenrola Brasil - An√°lise de Renegocia√ß√£o",
     page_icon="????",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -113,8 +113,8 @@ html, body, .stApp {{ color: {COR_TEXTO} !important; font-family: 'Inter', sans-
 st.markdown(f"""
 <div class="page-header">
     <h1>???? Desenrola Brasil</h1>
-    <p>An·lise de RenegociaÁ„o de DÌvidas | Dados Oficiais do Banco Central (set/2023 - mar/2026)</p>
-    <div class="update-badge">?? ⁄ltima atualizaÁ„o: {datetime.now().strftime('%d/%m/%Y')}</div>
+    <p>An√°lise de Renegocia√ß√£o de D√≠vidas | Dados Oficiais do Banco Central (set/2023 - mar/2026)</p>
+    <div class="update-badge">?? √öltima atualiza√ß√£o: {datetime.now().strftime('%d/%m/%Y')}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -129,9 +129,9 @@ with st.sidebar:
     st.markdown("### ?? Sobre os dados")
     st.markdown("""
     - **Fonte:** Banco Central do Brasil (SCR)
-    - **PerÌodo:** set/2023 - mar/2026
-    - **Total de operaÁıes:** 2,75 milhıes
-    - **Volume financeiro:** R$ 7,62 bilhıes
+    - **Per√≠odo:** set/2023 - mar/2026
+    - **Total de opera√ß√µes:** 2,75 milh√µes
+    - **Volume financeiro:** R$ 7,62 bilh√µes
     """)
     
     st.markdown("---")
@@ -139,7 +139,7 @@ with st.sidebar:
     st.markdown("[Portal do Banco Central](https://www.bcb.gov.br/)")
 
 # ============================================================
-# FUN«’ES
+# FUN√á√ïES
 # ============================================================
 def fmt_brl(valor):
     if pd.isna(valor) or valor == 0:
@@ -180,7 +180,7 @@ if uploaded_file is not None:
     if df is not None and len(df) > 0:
         st.success(f"? {len(df):,} registros carregados")
         
-        # ===== DADOS AGREGADOS (com base no seu relatÛrio) =====
+        # ===== DADOS AGREGADOS (com base no seu relat√≥rio) =====
         total_operacoes = 2749821
         total_volume = 7623057897.72
         ticket_medio = total_volume / total_operacoes
@@ -193,32 +193,32 @@ if uploaded_file is not None:
             <div class="kpi-card">
                 <div class="kpi-label">?? VOLUME RENEGOCIADO</div>
                 <div class="kpi-value">{fmt_brl(total_volume)}</div>
-                <div class="kpi-sub">total de dÌvidas renegociadas</div>
+                <div class="kpi-sub">total de d√≠vidas renegociadas</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-label">?? OPERA«’ES</div>
+                <div class="kpi-label">?? OPERA√á√ïES</div>
                 <div class="kpi-value">{fmt_num(total_operacoes)}</div>
-                <div class="kpi-sub">renegociaÁıes realizadas</div>
+                <div class="kpi-sub">renegocia√ß√µes realizadas</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col3:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-label">?? TICKET M…DIO</div>
+                <div class="kpi-label">?? TICKET M√âDIO</div>
                 <div class="kpi-value">{fmt_brl(ticket_medio)}</div>
-                <div class="kpi-sub">por operaÁ„o</div>
+                <div class="kpi-sub">por opera√ß√£o</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col4:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-label">?? PERÕODO</div>
+                <div class="kpi-label">?? PER√çODO</div>
                 <div class="kpi-value">31 meses</div>
                 <div class="kpi-sub">set/2023 - mar/2026</div>
             </div>
@@ -229,19 +229,19 @@ if uploaded_file is not None:
         <div class="insight-card">
             <div class="insight-title">?? PRINCIPAIS INSIGHTS</div>
             <div class="insight-text">
-                ï <strong>R$ 7,62 bilhıes</strong> em dÌvidas foram renegociados desde o lanÁamento do programa.<br>
-                ï <strong>Nubank</strong> lidera o ranking com <strong>547 mil operaÁıes</strong> (19,9% do total).<br>
-                ï <strong>S„o Paulo</strong> concentra <strong>26,7%</strong> de todas as renegociaÁıes do paÌs.<br>
-                ï <strong>Pequenos negÛcios (Tipo 3)</strong> representam apenas 2,6% das operaÁıes, mas <strong>41% do volume financeiro</strong>.<br>
-                ï Ticket mÈdio de <strong>R$ 4.091</strong> em Santa Catarina, o mais alto entre os grandes estados.
+                ¬ï <strong>R$ 7,62 bilh√µes</strong> em d√≠vidas foram renegociados desde o lan√ßamento do programa.<br>
+                ¬ï <strong>Nubank</strong> lidera o ranking com <strong>547 mil opera√ß√µes</strong> (19,9% do total).<br>
+                ¬ï <strong>S√£o Paulo</strong> concentra <strong>26,7%</strong> de todas as renegocia√ß√µes do pa√≠s.<br>
+                ¬ï <strong>Pequenos neg√≥cios (Tipo 3)</strong> representam apenas 2,6% das opera√ß√µes, mas <strong>41% do volume financeiro</strong>.<br>
+                ¬ï Ticket m√©dio de <strong>R$ 4.091</strong> em Santa Catarina, o mais alto entre os grandes estados.
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # ===== GR¡FICO 1: POR TIPO =====
+        # ===== GR√ÅFICO 1: POR TIPO =====
         st.markdown("""
         <div class="section-header">
-            <h2>?? RenegociaÁıes por Tipo do Programa</h2>
+            <h2>?? Renegocia√ß√µes por Tipo do Programa</h2>
             <span class="section-tag">Faixas</span>
         </div>
         """, unsafe_allow_html=True)
@@ -249,14 +249,14 @@ if uploaded_file is not None:
         col1, col2 = st.columns(2)
         
         tipo_data = pd.DataFrame({
-            'Tipo': ['Tipo 1 (Faixa 1 - PF)', 'Tipo 2 (Faixa 2 - PF)', 'Tipo 3 (Pequenos NegÛcios)'],
-            'OperaÁıes': [2101994, 576818, 71009],
+            'Tipo': ['Tipo 1 (Faixa 1 - PF)', 'Tipo 2 (Faixa 2 - PF)', 'Tipo 3 (Pequenos Neg√≥cios)'],
+            'Opera√ß√µes': [2101994, 576818, 71009],
             'Volume (R$)': [2174148416.69, 2326714534.06, 3122194946.97]
         })
         
         with col1:
-            fig1 = px.pie(tipo_data, names='Tipo', values='OperaÁıes', hole=0.35,
-                         title='DistribuiÁ„o de OperaÁıes por Tipo',
+            fig1 = px.pie(tipo_data, names='Tipo', values='Opera√ß√µes', hole=0.35,
+                         title='Distribui√ß√£o de Opera√ß√µes por Tipo',
                          color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_DESTAQUE])
             fig1.update_layout(template="plotly_white", height=450)
             fig1.update_traces(textposition='inside', textinfo='percent+label')
@@ -270,17 +270,17 @@ if uploaded_file is not None:
             fig2.update_layout(template="plotly_white", height=450)
             st.plotly_chart(fig2, use_container_width=True)
         
-        # ===== GR¡FICO 2: TOP ESTADOS =====
+        # ===== GR√ÅFICO 2: TOP ESTADOS =====
         st.markdown("""
         <div class="section-header">
-            <h2>??? Top 10 Estados com Mais RenegociaÁıes</h2>
+            <h2>??? Top 10 Estados com Mais Renegocia√ß√µes</h2>
             <span class="section-tag">Ranking</span>
         </div>
         """, unsafe_allow_html=True)
         
         uf_data = pd.DataFrame({
             'UF': ['SP', 'RJ', 'MG', 'PR', 'BA', 'RS', 'SC', 'PE', 'GO', 'CE'],
-            'OperaÁıes': [734871, 308491, 248897, 157097, 136192, 131560, 111682, 122973, 78888, 75479],
+            'Opera√ß√µes': [734871, 308491, 248897, 157097, 136192, 131560, 111682, 122973, 78888, 75479],
             'Volume (R$)': [2431234718.62, 789935116.06, 594789407.92, 377443218.40, 355581086.40,
                           434689585.97, 309969183.10, 240119896.81, 259401231.36, 233102203.91]
         })
@@ -288,8 +288,8 @@ if uploaded_file is not None:
         col1, col2 = st.columns(2)
         
         with col1:
-            fig3 = px.bar(uf_data, x='UF', y='OperaÁıes', color='OperaÁıes',
-                         title='N˙mero de OperaÁıes por UF',
+            fig3 = px.bar(uf_data, x='UF', y='Opera√ß√µes', color='Opera√ß√µes',
+                         title='N√∫mero de Opera√ß√µes por UF',
                          color_continuous_scale='Blues')
             fig3.update_layout(template="plotly_white", height=450)
             st.plotly_chart(fig3, use_container_width=True)
@@ -301,24 +301,24 @@ if uploaded_file is not None:
             fig4.update_layout(template="plotly_white", height=450)
             st.plotly_chart(fig4, use_container_width=True)
         
-        # ===== GR¡FICO 3: TOP BANCOS =====
+        # ===== GR√ÅFICO 3: TOP BANCOS =====
         st.markdown("""
         <div class="section-header">
-            <h2>?? Top 10 Bancos com Mais RenegociaÁıes</h2>
+            <h2>?? Top 10 Bancos com Mais Renegocia√ß√µes</h2>
             <span class="section-tag">Ranking</span>
         </div>
         """, unsafe_allow_html=True)
         
         banco_data = pd.DataFrame({
-            'Banco': ['Nubank', 'Caixa', 'BTG Pactual', 'Ita˙', 'Santander', 
+            'Banco': ['Nubank', 'Caixa', 'BTG Pactual', 'Ita√∫', 'Santander', 
                      'Inter', 'Bradesco', 'Banco do Brasil', 'BMG', 'C6 Bank'],
-            'OperaÁıes': [547422, 402955, 332136, 318524, 298376, 212868, 126841, 117515, 57941, 29573]
+            'Opera√ß√µes': [547422, 402955, 332136, 318524, 298376, 212868, 126841, 117515, 57941, 29573]
         })
         
-        fig5 = px.bar(banco_data, x='OperaÁıes', y='Banco', orientation='h',
-                     title='Top 10 Bancos por N˙mero de RenegociaÁıes',
-                     color='OperaÁıes', color_continuous_scale='Viridis',
-                     text='OperaÁıes')
+        fig5 = px.bar(banco_data, x='Opera√ß√µes', y='Banco', orientation='h',
+                     title='Top 10 Bancos por N√∫mero de Renegocia√ß√µes',
+                     color='Opera√ß√µes', color_continuous_scale='Viridis',
+                     text='Opera√ß√µes')
         fig5.update_layout(template="plotly_white", height=500)
         fig5.update_traces(texttemplate='%{text:,}', textposition='outside')
         st.plotly_chart(fig5, use_container_width=True)
@@ -326,8 +326,8 @@ if uploaded_file is not None:
         # ===== INSIGHTS FINAIS =====
         st.markdown("""
         <div class="section-header">
-            <h2>?? Conclusıes EstratÈgicas</h2>
-            <span class="section-tag">An·lise</span>
+            <h2>?? Conclus√µes Estrat√©gicas</h2>
+            <span class="section-tag">An√°lise</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -336,47 +336,47 @@ if uploaded_file is not None:
         with col1:
             st.markdown(f"""
             <div class="insight-card" style="background:white;">
-                <div class="insight-title">?? Banco LÌder</div>
+                <div class="insight-title">?? Banco L√≠der</div>
                 <div class="insight-value">Nubank</div>
-                <div class="insight-text">Com <strong>547 mil renegociaÁıes</strong> (19,9% do total), o Nubank lidera isoladamente, superando bancos tradicionais.</div>
+                <div class="insight-text">Com <strong>547 mil renegocia√ß√µes</strong> (19,9% do total), o Nubank lidera isoladamente, superando bancos tradicionais.</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
             st.markdown(f"""
             <div class="insight-card" style="background:white;">
-                <div class="insight-title">?? ConcentraÁ„o Regional</div>
+                <div class="insight-title">?? Concentra√ß√£o Regional</div>
                 <div class="insight-value">Sudeste</div>
-                <div class="insight-text">SP, RJ e MG concentram <strong>47% do volume financeiro</strong> e <strong>45% das operaÁıes</strong>.</div>
+                <div class="insight-text">SP, RJ e MG concentram <strong>47% do volume financeiro</strong> e <strong>45% das opera√ß√µes</strong>.</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col3:
             st.markdown(f"""
             <div class="insight-card" style="background:white;">
-                <div class="insight-title">?? Ticket MÈdio SC</div>
+                <div class="insight-title">?? Ticket M√©dio SC</div>
                 <div class="insight-value">R$ 4.091</div>
-                <div class="insight-text">Santa Catarina tem o <strong>maior ticket mÈdio</strong> entre os grandes estados.</div>
+                <div class="insight-text">Santa Catarina tem o <strong>maior ticket m√©dio</strong> entre os grandes estados.</div>
             </div>
             """, unsafe_allow_html=True)
         
-        # ===== EXPORTA«√O =====
+        # ===== EXPORTA√á√ÉO =====
         st.markdown("---")
-        st.markdown("### ?? Exportar RelatÛrio")
+        st.markdown("### ?? Exportar Relat√≥rio")
         
-        relatorio = f"""RELAT”RIO DESENROLA BRASIL
+        relatorio = f"""RELAT√ìRIO DESENROLA BRASIL
 Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
-VIS√O GERAL:
+VIS√ÉO GERAL:
 - Total Renegociado: {fmt_brl(total_volume)}
-- Total de OperaÁıes: {fmt_num(total_operacoes)}
-- Ticket MÈdio: {fmt_brl(ticket_medio)}
+- Total de Opera√ß√µes: {fmt_num(total_operacoes)}
+- Ticket M√©dio: {fmt_brl(ticket_medio)}
 
 TOP 5 BANCOS:
-1. Nubank - 547.422 operaÁıes
+1. Nubank - 547.422 opera√ß√µes
 2. Caixa - 402.955
 3. BTG Pactual - 332.136
-4. Ita˙ - 318.524
+4. Ita√∫ - 318.524
 5. Santander - 298.376
 
 TOP 5 ESTADOS:
@@ -389,12 +389,12 @@ TOP 5 ESTADOS:
 Fonte: Banco Central do Brasil (SCR/Desenrola)
 """
         
-        st.download_button("?? Exportar RelatÛrio", relatorio, f"relatorio_desenrola_{datetime.now().strftime('%Y%m%d')}.txt", "text/plain")
+        st.download_button("?? Exportar Relat√≥rio", relatorio, f"relatorio_desenrola_{datetime.now().strftime('%Y%m%d')}.txt", "text/plain")
         
         st.markdown(f"""
         <div class="footer">
-            ???? Desenrola Brasil ∑ Fonte: Banco Central do Brasil (SCR)<br>
-            ?? RelatÛrio gerado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
+            ???? Desenrola Brasil ¬∑ Fonte: Banco Central do Brasil (SCR)<br>
+            ?? Relat√≥rio gerado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
         </div>
         """, unsafe_allow_html=True)
     
@@ -405,13 +405,13 @@ else:
     # ============================================================
     # TELA INICIAL
     # ============================================================
-    st.info("?? **FaÁa upload do arquivo CSV no menu lateral para comeÁar**")
+    st.info("?? **Fa√ßa upload do arquivo CSV no menu lateral para come√ßar**")
     
     st.markdown("""
     <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #E8ECF0;">
         <h3 style="color: #1A2B4C; margin-bottom: 12px;">?? Sobre o Dashboard</h3>
-        <p style="color: #6B7A8F;">Este dashboard analisa os dados do <strong>Programa Desenrola Brasil</strong>, iniciativa do governo federal para renegociaÁ„o de dÌvidas.</p>
-        <p style="color: #6B7A8F; margin-top: 8px;">? <strong>Fonte oficial:</strong> Banco Central do Brasil (Sistema de InformaÁıes de CrÈdito - SCR)</p>
+        <p style="color: #6B7A8F;">Este dashboard analisa os dados do <strong>Programa Desenrola Brasil</strong>, iniciativa do governo federal para renegocia√ß√£o de d√≠vidas.</p>
+        <p style="color: #6B7A8F; margin-top: 8px;">? <strong>Fonte oficial:</strong> Banco Central do Brasil (Sistema de Informa√ß√µes de Cr√©dito - SCR)</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -429,7 +429,7 @@ else:
         st.markdown("""
         <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #E8ECF0;">
             <div style="font-size: 28px; font-weight: 700; color: #003087;">2,75M</div>
-            <div style="font-size: 13px; color: #6B7A8F;">OperaÁıes</div>
+            <div style="font-size: 13px; color: #6B7A8F;">Opera√ß√µes</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -437,7 +437,7 @@ else:
         st.markdown("""
         <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #E8ECF0;">
             <div style="font-size: 28px; font-weight: 700; color: #003087;">Nubank</div>
-            <div style="font-size: 13px; color: #6B7A8F;">Banco LÌder</div>
+            <div style="font-size: 13px; color: #6B7A8F;">Banco L√≠der</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -445,7 +445,7 @@ else:
         st.markdown("""
         <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #E8ECF0;">
             <div style="font-size: 28px; font-weight: 700; color: #003087;">SP</div>
-            <div style="font-size: 13px; color: #6B7A8F;">Estado LÌder</div>
+            <div style="font-size: 13px; color: #6B7A8F;">Estado L√≠der</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -453,16 +453,16 @@ else:
     <div style="background: #E8F4FD; border-radius: 12px; padding: 20px; margin-top: 20px;">
         <h4 style="color: #1A2B4C; margin-bottom: 12px;">?? Como usar</h4>
         <ol style="color: #6B7A8F; margin: 0; padding-left: 20px;">
-            <li>FaÁa upload do arquivo CSV (dados_desenrola.csv)</li>
-            <li>Explore os gr·ficos e rankings interativos</li>
-            <li>Exporte o relatÛrio completo</li>
+            <li>Fa√ßa upload do arquivo CSV (dados_desenrola.csv)</li>
+            <li>Explore os gr√°ficos e rankings interativos</li>
+            <li>Exporte o relat√≥rio completo</li>
         </ol>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown(f"""
     <div class="footer">
-        ???? Desenrola Brasil ∑ Dashboard para portfÛlio<br>
+        ???? Desenrola Brasil ¬∑ Dashboard para portf√≥lio<br>
         Fonte: Banco Central do Brasil (SCR)
     </div>
     """, unsafe_allow_html=True)
