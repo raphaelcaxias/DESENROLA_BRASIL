@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from datetime import datetime
 import re
 import warnings
 
@@ -23,86 +24,91 @@ st.set_page_config(
 )
 
 # ============================================================
-# TEMA CORPORATIVO PERSONALIZADO (PALETA SLATE & INDIGO)
+# TEMA
 # ============================================================
 if "tema" not in st.session_state:
     st.session_state.tema = "claro"
 
 T = st.session_state.tema
 if T == "claro":
-    COR_FUNDO       = "#F8FAFC"  # Slate 50
+    COR_FUNDO       = "#F8FAFC"
     COR_CARD        = "#FFFFFF"
-    COR_TEXTO       = "#0F172A"  # Slate 900
-    COR_BORDA       = "#E2E8F0"  # Slate 200
-    COR_PRIMARIA    = "#4F46E5"  # Indigo 600
-    COR_SECUNDARIA  = "#0EA5E9"  # Sky 500
-    COR_SUCESSO     = "#10B981"  # Emerald 500
-    COR_ALERTA      = "#EF4444"  # Red 500
-    COR_ATENCAO     = "#F59E0B"  # Amber 500
+    COR_TEXTO       = "#1E293B"
+    COR_BORDA       = "#E2E8F0"
+    COR_PRIMARIA    = "#0F172A"
+    COR_SECUNDARIA  = "#2563EB"
+    COR_SUCESSO     = "#16A34A"
+    COR_ALERTA      = "#DC2626"
+    COR_ATENCAO     = "#D97706"
     PLOTLY_TEMPLATE = "plotly_white"
-    COR_GRID        = "rgba(15,23,42,0.06)"
+    COR_GRID        = "rgba(0,0,0,0.06)"
 else:
-    COR_FUNDO       = "#0F172A"  # Slate 900
-    COR_CARD        = "#1E293B"  # Slate 800
-    COR_TEXTO       = "#F8FAFC"  # Slate 50
-    COR_BORDA       = "#334155"  # Slate 700
-    COR_PRIMARIA    = "#818CF8"  # Indigo 400
-    COR_SECUNDARIA  = "#38BDF8"  # Sky 400
-    COR_SUCESSO     = "#34D399"  # Emerald 400
-    COR_ALERTA      = "#F87171"  # Red 400
-    COR_ATENCAO     = "#FBBF24"  # Amber 400
+    COR_FUNDO       = "#0B0F19"
+    COR_CARD        = "#111827"
+    COR_TEXTO       = "#F3F4F6"
+    COR_BORDA       = "#1F2937"
+    COR_PRIMARIA    = "#38BDF8"
+    COR_SECUNDARIA  = "#60A5FA"
+    COR_SUCESSO     = "#34D399"
+    COR_ALERTA      = "#F87171"
+    COR_ATENCAO     = "#FBBF24"
     PLOTLY_TEMPLATE = "plotly_dark"
-    COR_GRID        = "rgba(248,250,252,0.06)"
+    COR_GRID        = "rgba(255,255,255,0.06)"
 
 # ============================================================
-# ESTILIZAÇÃO CSS
+# CSS
 # ============================================================
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
 html, body, .stApp {{
     background-color: {COR_FUNDO};
     color: {COR_TEXTO};
-    font-family: 'Inter', sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
 }}
-.block-container {{ padding: 1.5rem 2rem; }}
+.block-container {{ padding: 1rem 1.5rem; }}
 .kpi-card {{
     background: {COR_CARD};
-    border-top: 4px solid {COR_PRIMARIA};
-    border-radius: 12px;
-    padding: 1.2rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+    border-left: 4px solid {COR_SECUNDARIA};
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
 }}
-.kpi-title {{ font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; font-weight: 600; }}
-.kpi-value {{ font-size: 1.8rem; font-weight: 700; color: {COR_TEXTO}; margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace; }}
-.kpi-sub   {{ font-size: 0.75rem; color: #94A3B8; margin-top: 0.25rem; }}
+.kpi-title {{ font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; font-weight: 600; }}
+.kpi-value {{ font-size: 1.6rem; font-weight: 700; color: {COR_TEXTO}; margin-top: 0.15rem; font-family: 'IBM Plex Mono', monospace; }}
+.kpi-sub   {{ font-size: 0.72rem; color: #94A3B8; margin-top: 0.15rem; }}
 .insight-box {{
     background: {COR_CARD};
     border: 1px solid {COR_BORDA};
-    border-radius: 12px;
-    padding: 1.2rem;
-    margin-bottom: 0.75rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.6rem;
 }}
-.insight-label {{ font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: {COR_PRIMARIA}; font-weight: 700; margin-bottom: 0.4rem; }}
-.insight-text  {{ font-size: 0.92rem; color: {COR_TEXTO}; line-height: 1.6; }}
-.badge {{ padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.75rem; display: inline-block; }}
-.badge-low  {{ background: rgba(16,185,129,0.12); color: {COR_SUCESSO}; }}
-.badge-mid  {{ background: rgba(245,158,11,0.12); color: {COR_ATENCAO}; }}
-.badge-high {{ background: rgba(239,68,68,0.12);  color: {COR_ALERTA}; }}
-.dq-card {{ background: {COR_CARD}; border: 1px solid {COR_BORDA}; border-radius: 8px; padding: 1rem; font-size: 0.85rem; line-height: 1.6; }}
-.mono {{ font-family: 'JetBrains Mono', monospace; font-weight: 600; }}
+.insight-label {{ font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8; font-weight: 600; margin-bottom: 0.3rem; }}
+.insight-text  {{ font-size: 0.88rem; color: {COR_TEXTO}; line-height: 1.55; }}
+.badge {{ padding: 2px 8px; border-radius: 20px; font-weight: 600; font-size: 0.68rem; display: inline-block; }}
+.badge-low  {{ background: rgba(22,163,74,0.12);  color: #16A34A; }}
+.badge-mid  {{ background: rgba(217,119,6,0.12);  color: #D97706; }}
+.badge-high {{ background: rgba(220,38,38,0.12);  color: #DC2626; }}
+.dq-card {{
+    background: {COR_CARD};
+    border: 1px solid {COR_BORDA};
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
+}}
+.mono {{ font-family: 'IBM Plex Mono', monospace; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# FORMATADORES E AUXILIARES
+# UTILITÁRIOS
 # ============================================================
 def fmt_brl(v):
     if pd.isna(v) or v == 0: return "R$ 0"
-    if v >= 1e9:  return f"R$ {v/1e9:.2f}B".replace(".", ",")
-    if v >= 1e6:  return f"R$ {v/1e6:.2f}M".replace(".", ",")
+    if v >= 1e9:  return f"R$ {v/1e9:.1f}B".replace(".", ",")
+    if v >= 1e6:  return f"R$ {v/1e6:.1f}M".replace(".", ",")
     return f"R$ {v:,.0f}".replace(",", ".")
 
 def fmt_num(v):
@@ -128,211 +134,300 @@ def agrupar_regiao(uf):
         if uf in ests: return r
     return "Não Identificado"
 
-def layout_base(fig, height=400, showlegend=True):
-    fig.update_layout(
-        template=PLOTLY_TEMPLATE, height=height,
-        margin=dict(l=40, r=40, t=50, b=40),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=COR_TEXTO, family="Inter", size=12),
-        hovermode="x unified", showlegend=showlegend,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    fig.update_xaxes(showgrid=False, color=COR_TEXTO, linecolor=COR_BORDA)
-    fig.update_yaxes(showgrid=True, gridcolor=COR_GRID, color=COR_TEXTO)
-    return fig
-
 @st.cache_data
 def calcular_hhi(df, col):
-    # Proteção extra para garantir soma numérica no HHI
-    valores_numericos = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    total = valores_numericos.sum()
-    return 0 if total == 0 else ((valores_numericos/total)**2).sum()*10000
+    total = df[col].sum()
+    return 0 if total == 0 else ((df[col]/total)**2).sum()*10000
 
 @st.cache_data
 def interpretar_hhi(hhi):
-    if hhi < 1500: return "Mercado Altamente Competitivo", "badge-low", "Baixa concentração bancária."
-    if hhi < 2500: return "Concentração Moderada", "badge-mid", "Mercado saudável, porém monitorável."
-    return "Altamente Concentrado (Oligopólio)", "badge-high", "Alto risco de concentração de crédito."
+    if hhi < 1500:
+        return "Mercado Competitivo (HHI < 1.500)", "badge-low", "Baixo risco de concentração bancária – saudável para o consumidor."
+    if hhi < 2500:
+        return "Concentração Moderada (HHI 1.500–2.500)", "badge-mid", "Atenção: poucos bancos lideram o programa. Monitorar tendência."
+    return "Altamente Concentrado (HHI > 2.500)", "badge-high", "Risco sistêmico elevado: oligopólio pode reduzir acesso ao crédito."
 
-# ============================================================
-# ENGINE DE MODELAGEM E PROJEÇÃO (HOLT-WINTERS)
-# ============================================================
+@st.cache_data
+def calcular_pareto(df, col):
+    df_s = df.sort_values(col, ascending=False).reset_index(drop=True)
+    total = df_s[col].sum()
+    if total > 0:
+        df_s["pct_acum"] = (df_s[col].cumsum() / total) * 100
+    else:
+        df_s["pct_acum"] = 0
+    return df_s
+
+def layout_base(fig, height=450, showlegend=True):
+    fig.update_layout(
+        template=PLOTLY_TEMPLATE,
+        height=height,
+        margin=dict(l=50, r=40, t=60, b=50),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=COR_TEXTO, family="IBM Plex Sans", size=12),
+        hovermode="x unified",
+        showlegend=showlegend,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11))
+    )
+    fig.update_xaxes(showgrid=False, color=COR_TEXTO, title_font_size=12, linecolor=COR_BORDA)
+    fig.update_yaxes(showgrid=True, gridcolor=COR_GRID, color=COR_TEXTO, title_font_size=12)
+    fig.update_layout(autosize=True)
+    return fig
+
 @st.cache_data
 def projetar_holt_winters(series_volume, datas, periodos=3):
-    # Força os dados da série a serem estritamente numéricos float
-    series_limpa = pd.to_numeric(series_volume, errors="coerce").fillna(0)
-    if len(series_limpa) < 4: return None, None, None, None
-    try:
-        modelo = ExponentialSmoothing(series_limpa.values, trend="add", seasonal=None).fit(optimized=True)
-        previsao = modelo.forecast(periodos)
-        datas_futuras = pd.date_range(datas.max(), periods=periodos+1, freq="MS")[1:]
-        sigma = np.std(modelo.resid) if len(modelo.resid) > 0 else 0
-        return datas_futuras, previsao, previsao - 1.96*sigma, previsao + 1.96*sigma
-    except:
+    if len(series_volume) < 4:
         return None, None, None, None
+    modelo = ExponentialSmoothing(series_volume.values, trend="add", seasonal=None, initialization_method="estimated").fit(optimized=True)
+    previsao = modelo.forecast(periodos)
+    datas_futuras = pd.date_range(datas.max(), periods=periodos+1, freq="MS")[1:]
+    sigma = np.std(modelo.resid)
+    lower = previsao - 1.96*sigma
+    upper = previsao + 1.96*sigma
+    return datas_futuras, previsao, lower, upper
+
+@st.cache_data
+def clusterizar_bancos(df, col_banco):
+    dados = df.groupby(col_banco).agg(
+        numero_operacoes=("numero_operacoes","sum"),
+        volume_operacoes=("volume_operacoes","sum")
+    ).reset_index()
+    dados["ticket_medio"] = dados["volume_operacoes"] / dados["numero_operacoes"]
+    dados = dados[dados["numero_operacoes"] > 100]
+    if len(dados) < 3:
+        return None, None
+    scaler = StandardScaler()
+    features = scaler.fit_transform(dados[["numero_operacoes","ticket_medio"]])
+    n = min(3, len(dados))
+    kmeans = KMeans(n_clusters=n, random_state=42, n_init=10)
+    dados["cluster"] = kmeans.fit_predict(features)
+    medias = dados.groupby("cluster")[["numero_operacoes","ticket_medio"]].mean()
+    rank_vol    = medias["numero_operacoes"].rank(ascending=False).astype(int)
+    rank_ticket = medias["ticket_medio"].rank(ascending=False).astype(int)
+    def rotulo(c):
+        alto_vol = rank_vol[c] == 1
+        alto_ticket = rank_ticket[c] == 1
+        if alto_vol and not alto_ticket:
+            return "Alto Volume / Baixo Ticket"
+        if not alto_vol and alto_ticket:
+            return "Baixo Volume / Alto Ticket"
+        return "Perfil Equilibrado"
+    dados["cluster_nome"] = dados["cluster"].map(rotulo)
+    fig = go.Figure()
+    cores_cluster = {"Alto Volume / Baixo Ticket": COR_SECUNDARIA,
+                     "Baixo Volume / Alto Ticket": COR_ATENCAO,
+                     "Perfil Equilibrado": COR_SUCESSO}
+    for nome, grp in dados.groupby("cluster_nome"):
+        size_norm = np.log1p(grp["volume_operacoes"] / grp["volume_operacoes"].max()) * 30 + 8
+        fig.add_trace(go.Scatter(
+            x=grp["numero_operacoes"], y=grp["ticket_medio"],
+            mode="markers", name=nome,
+            marker=dict(size=size_norm, color=cores_cluster.get(nome, "#64748B"), opacity=0.8,
+                        line=dict(width=1, color=COR_BORDA)),
+            hovertemplate="<b>%{customdata}</b><br>Operações: %{x:,.0f}<br>Ticket Médio: R$ %{y:,.2f}<extra></extra>",
+            customdata=grp[col_banco]
+        ))
+    fig.update_layout(title=dict(text="Agrupamento de Instituições por Comportamento (K-Means)", font_size=14),
+                      xaxis_title="Número de Operações", yaxis_title="Ticket Médio (R$)")
+    layout_base(fig, height=500)
+    return fig, dados
+
+def calcular_data_quality(df_original, df_limpo):
+    total_raw = len(df_original) if df_original is not None else len(df_limpo)
+    total_limpo = len(df_limpo)
+    completude = (df_limpo.notna().sum() / len(df_limpo)) * 100
+    periodo_min = df_limpo["data_base"].min().strftime("%m/%Y") if not df_limpo["data_base"].isna().all() else "N/D"
+    periodo_max = df_limpo["data_base"].max().strftime("%m/%Y") if not df_limpo["data_base"].isna().all() else "N/D"
+    return {
+        "total_registros": total_limpo,
+        "registros_descartados": total_raw - total_limpo,
+        "completude_volume": completude.get("volume_operacoes", 100),
+        "completude_operacoes": completude.get("numero_operacoes", 100),
+        "periodo_inicio": periodo_min,
+        "periodo_fim": periodo_max,
+        "meses_cobertos": df_limpo["data_base"].nunique(),
+        "ultima_data": periodo_max
+    }
+
+@st.cache_data
+def gerar_alertas(evolucao, hhi, ticket_medio_geral):
+    alertas = []
+    if len(evolucao) >= 2:
+        cresc_ultimo = evolucao["crescimento"].dropna().iloc[-1] if len(evolucao["crescimento"].dropna()) > 0 else 0
+        if cresc_ultimo < -15:
+            alertas.append(("error", "🔴 Queda Abrupta", f"Volume caiu {cresc_ultimo:.1f}% no último mês."))
+        elif cresc_ultimo < -5:
+            alertas.append(("warning", "🟡 Desaceleração", f"Queda de {cresc_ultimo:.1f}% sinaliza perda de ritmo."))
+        elif cresc_ultimo > 20:
+            alertas.append(("success", "🟢 Aceleração Forte", f"Crescimento de +{cresc_ultimo:.1f}%."))
+    if hhi > 2500:
+        alertas.append(("error", "🔴 Concentração Elevada", "HHI > 2.500: mercado oligopolizado."))
+    elif hhi > 1500:
+        alertas.append(("warning", "🟡 Concentração Moderada", "HHI entre 1.500–2.500: monitorar."))
+    if ticket_medio_geral > 5000:
+        alertas.append(("info", "ℹ️ Ticket Alto", f"Ticket médio de {fmt_brl(ticket_medio_geral)}."))
+    return alertas
 
 # ============================================================
-# PIPELINE DE TRATAMENTO DE DADOS
+# CARREGAMENTO DE DADOS
 # ============================================================
 @st.cache_data(ttl=3600)
 def carregar_dados():
-    try:
-        df = pd.read_csv("dados_desenrola.csv", sep=";", encoding="utf-8")
-    except Exception:
-        # Fallback de dados fictícios para fins de teste se o arquivo não estiver presente
-        datas = pd.date_range(start="2024-01-01", periods=12, freq="MS").strftime("%Y%m").astype(int)
-        bancos_mock = ["Banco Itaú", "Banco do Brasil", "Bradesco", "Caixa Econômica", "Nubank", "Banco Inter"]
-        ufs = ["SP", "RJ", "MG", "BA", "PR", "RS", "PE", "CE", "DF", "AM"]
-        faixas = ["Faixa 1", "Faixa 2"]
-        
-        np.random.seed(42)
-        rows = []
-        for d in datas:
-            for b in bancos_mock:
-                for uf in ufs:
-                    for f in faixas:
-                        ops = np.random.randint(500, 15000)
-                        vol = ops * np.random.uniform(1200, 4500)
-                        rows.append([d, b, uf, f, ops, vol])
-        df = pd.DataFrame(rows, columns=["data_base", "nome_conglomerado_financeiro", "unidade_federacao", "tipo_desenrola", "numero_operacoes", "volume_operacoes"])
-    
-    df.columns = df.columns.str.lower().str.strip()
-    
-    # Tratamento agressivo de strings numéricas (Remove pontos de milhar e substitui vírgulas decimais)
-    for col in ["volume_operacoes", "numero_operacoes"]:
-        if col in df.columns:
-            if df[col].dtype == object:
-                df[col] = df[col].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    df["data_base"] = pd.to_datetime(df["data_base"].astype(str), format="%Y%m", errors="coerce")
-    df["tipo_banco"] = df["nome_conglomerado_financeiro"].apply(classificar_banco)
-    df["regiao"]     = df["unidade_federacao"].apply(agrupar_regiao)
-    return df, df.dropna(subset=["volume_operacoes","numero_operacoes"])
+    for enc in ["utf-8","latin1","cp1252"]:
+        try:
+            df = pd.read_csv("dados_desenrola.csv", sep=";", encoding=enc, low_memory=False)
+            df.columns = df.columns.str.lower().str.strip()
+            for col in ["numero_operacoes","volume_operacoes"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(
+                        df[col].astype(str).str.replace(".","",regex=False).str.replace(",",".",regex=False),
+                        errors="coerce"
+                    )
+            df["data_base"] = pd.to_datetime(df["data_base"].astype(str), format="%Y%m", errors="coerce")
+            df["tipo_banco"] = df["nome_conglomerado_financeiro"].apply(classificar_banco)
+            df["regiao"]     = df["unidade_federacao"].apply(agrupar_regiao)
+            df_limpo = df.dropna(subset=["volume_operacoes","numero_operacoes"])
+            return df, df_limpo
+        except Exception:
+            continue
+    return None, None
 
 df_raw, df = carregar_dados()
+if df is None:
+    st.error("Erro ao carregar dados. Verifique se 'dados_desenrola.csv' está presente.")
+    st.stop()
+
+dq = calcular_data_quality(df_raw, df)
 
 # ============================================================
-# SIDEBAR DE ADM & FILTROS
+# SIDEBAR
 # ============================================================
 with st.sidebar:
-    st.markdown("### ⚙️ Interface & Layout")
+    st.markdown("### ⚙️ Controles")
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("☀️ Claro", use_container_width=True): st.session_state.tema = "claro"; st.rerun()
+        if st.button("☀️ Claro", use_container_width=True):
+            st.session_state.tema = "claro"; st.rerun()
     with c2:
-        if st.button("🌙 Escuro", use_container_width=True): st.session_state.tema = "escuro"; st.rerun()
+        if st.button("🌙 Escuro", use_container_width=True):
+            st.session_state.tema = "escuro"; st.rerun()
 
     st.markdown("---")
-    st.markdown("### 🔍 Filtros Estratégicos")
     tipos   = sorted(df["tipo_desenrola"].unique())
     tipo    = st.multiselect("Faixa do Programa", tipos, default=tipos)
     regioes = sorted(df["regiao"].unique())
-    regiao  = st.multiselect("Região Demográfica", regioes, default=regioes)
+    regiao  = st.multiselect("Região", regioes, default=regioes)
     bancos  = sorted(df["tipo_banco"].unique())
-    banco   = st.multiselect("Segmento Institucional", bancos, default=bancos)
+    banco   = st.multiselect("Segmento", bancos, default=bancos)
+    if st.button("🔄 Limpar Filtros", use_container_width=True): st.rerun()
 
-# Aplicação de Filtros Dinâmicos
+    st.markdown("---")
+    st.markdown("### 📋 Qualidade dos Dados")
+    st.markdown(f"""
+    <div class="dq-card">
+    <b>Registros válidos:</b> <span class="mono">{fmt_num(dq['total_registros'])}</span><br>
+    <b>Descartados:</b> <span class="mono">{fmt_num(dq['registros_descartados'])}</span><br>
+    <b>Período:</b> <span class="mono">{dq['periodo_inicio']} → {dq['periodo_fim']}</span><br>
+    <b>Meses cobertos:</b> <span class="mono">{dq['meses_cobertos']}</span><br>
+    <b>Completude volume:</b> <span class="mono">{dq['completude_volume']:.1f}%</span><br>
+    <b>Completude ops:</b> <span class="mono">{dq['completude_operacoes']:.1f}%</span>
+    </div>
+    """, unsafe_allow_html=True)
+
 df_f = df[df["tipo_desenrola"].isin(tipo) & df["regiao"].isin(regiao) & df["tipo_banco"].isin(banco)]
 
 if df_f.empty:
-    st.warning("Nenhum registro encontrado para a combinação de filtros selecionada.")
+    st.warning("Nenhum dado encontrado. Ajuste os filtros.")
     st.stop()
 
-# ============================================================
-# CÁLCULO DE KPIS DO TOPO (BLINDAGEM TYPE_ERROR)
-# ============================================================
-total_volume = float(df_f["volume_operacoes"].sum())
-total_ops    = float(df_f["numero_operacoes"].sum())
-ticket_medio = float(total_volume / total_ops) if total_ops > 0 else 0.0
-num_inst     = int(df_f["nome_conglomerated_financeiro"].nunique()) if "nome_conglomerated_financeiro" in df_f.columns else int(df_f["nome_conglomerado_financeiro"].nunique())
+col_banco = "nome_conglomerado_financeiro"
 
 # ============================================================
-# CABEÇALHO & VISÃO GERAL
+# ==========  STORYTELLING EXECUTIVO (CORRIGIDO) ==========
 # ============================================================
 st.title("🏦 Desenrola Brasil – Painel Executivo")
-st.caption("Monitoramento estratégico das operações de renegociação de dívidas ativas")
+st.caption("Monitoramento de renegociação de dívidas – Fonte: Banco Central do Brasil (SCR)")
 
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">💵 Volume Total</div><div class="kpi-value">{fmt_brl(total_volume)}</div><div class="kpi-sub">Total renegociado</div></div>', unsafe_allow_html=True)
-with kpi2: st.markdown(f'<div class="kpi-card"><div class="kpi-title">📄 Total de Contratos</div><div class="kpi-value">{fmt_num(total_ops)}</div><div class="kpi-sub">CPFs/Dívidas liquidadas</div></div>', unsafe_allow_html=True)
-with kpi3: st.markdown(f'<div class="kpi-card"><div class="kpi-title">🎫 Ticket Médio</div><div class="kpi-value">{fmt_brl(ticket_medio)}</div><div class="kpi-sub">Valor médio por contrato</div></div>', unsafe_allow_html=True)
-with kpi4: st.markdown(f'<div class="kpi-card"><div class="kpi-title">🏛️ Players Ativos</div><div class="kpi-value">{num_inst}</div><div class="kpi-sub">Instituições financeiras</div></div>', unsafe_allow_html=True)
-
-# CÁLCULO DE INSIGHTS AUTOMATIZADOS PARA TEXTO
-market_share = df_f.groupby("nome_conglomerado_financeiro")["numero_operacoes"].sum().reset_index()
-hhi_val = calcular_hhi(market_share, "numero_operacoes")
-lbl_hhi, badge_hhi, desc_hhi = interpretar_hhi(hhi_val)
-
-reg_share = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
-lider_reg = reg_share.loc[reg_share["volume_operacoes"].idxmax()] if not reg_share.empty else {"regiao": "N/A", "volume_operacoes": 0}
-
-# ============================================================
-# ESTAÇÃO DE ABAS ANALÍTICAS
-# ============================================================
-aba_temporal, aba_bancos, aba_geografica = st.tabs(["📈 Evolução & Tendências", "🏛️ Análise Bancária & Market Share", "🗺️ Distribuição Geográfica"])
-
-# --- ABA 1: EVOLUÇÃO TEMPORAL ---
-with aba_temporal:
-    st.subheader("Análise Temporal e Projeção de Volume")
-    evolucao_mensal = df_f.groupby("data_base")["volume_operacoes"].sum().reset_index()
-    
-    fig_temp = go.Figure()
-    fig_temp.add_trace(go.Scatter(x=evolucao_mensal["data_base"], y=evolucao_mensal["volume_operacoes"], mode="lines+markers", name="Volume Realizado", line=dict(color=COR_PRIMARIA, width=3)))
-    
-    if len(evolucao_mensal) >= 3:
-        evolucao_mensal["ma"] = evolucao_mensal["volume_operacoes"].rolling(3).mean()
-        fig_temp.add_trace(go.Scatter(x=evolucao_mensal["data_base"], y=evolucao_mensal["ma"], mode="lines", name="Média Móvel (3 Meses)", line=dict(color=COR_ATENCAO, dash="dash")))
-
-    df_futuras, prev, low, upp = projetar_holt_winters(evolucao_mensal["volume_operacoes"], evolucao_mensal["data_base"])
-    if df_futuras is not None:
-        fig_temp.add_trace(go.Scatter(x=df_futuras, y=prev, mode="lines+markers", name="Projeção (Holt-Winters)", line=dict(color=COR_SECUNDARIA, dash="dot")))
-        fig_temp.add_trace(go.Scatter(x=list(df_futuras)+list(df_futuras)[::-1], y=list(upp)+list(low)[::-1], fill='toself', fillcolor='rgba(14,165,233,0.1)', line=dict(color='rgba(255,255,255,0)'), name="Intervalo de Confiança (95%)"))
-
-    layout_base(fig_temp)
-    st.plotly_chart(fig_temp, use_container_width=True)
-
-# --- ABA 2: ANÁLISE BANCÁRIA ---
-with aba_bancos:
-    st.subheader("Concentração e Dominância de Mercado")
-    
-    c_banco_1, c_banco_2 = st.columns([1, 2])
-    with c_banco_1:
+with st.container():
+    col_origem, col_link = st.columns([3,1])
+    with col_origem:
+        st.markdown("""
+        **📌 Sobre os dados**  
+        Este dashboard analisa os dados públicos do **Programa Desenrola Brasil**, divulgados mensalmente pelo Banco Central (Sistema de Informações de Crédito – SCR).  
+        A base contém todas as operações de renegociação de dívidas realizadas no âmbito do programa, segregadas por instituição financeira, unidade da federação e faixa do programa (Tipo 1/2/3).  
+        O objetivo é oferecer uma visão estratégica do impacto do programa: **quanto foi renegociado, quais bancos e regiões lideram, e qual a tendência futura.**  
+        """)
+    with col_link:
         st.markdown(f"""
-        <div class="insight-box">
-            <div class="insight-label">Índice Herfindahl-Hirschman (HHI)</div>
-            <span class="badge {badge_hhi}">{lbl_hhi}</span>
-            <div class="insight-text" style="margin-top:0.5rem;"><b>Score: {hhi_val:.0f}</b>. {desc_hhi}</div>
+        <div style="background:{COR_CARD}; padding:0.8rem; border-radius:10px; text-align:center; border:1px solid {COR_BORDA}">
+        🔗 <a href="https://www.bcb.gov.br/estatisticas/scr" target="_blank" style="color:{COR_SECUNDARIA}">Acesse os dados originais →</a>
         </div>
         """, unsafe_allow_html=True)
-        
-        banco_seg = df_f.groupby("tipo_banco")["volume_operacoes"].sum().reset_index()
-        fig_pie = px.pie(banco_seg, values="volume_operacoes", names="tipo_banco", color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_SUCESSO, COR_ATENCAO])
-        layout_base(fig_pie, height=280, showlegend=True)
-        st.plotly_chart(fig_pie, use_container_width=True)
 
-    with c_banco_2:
-        top_bancos = df_f.groupby("nome_conglomerado_financeiro")["volume_operacoes"].sum().reset_index().sort_values("volume_operacoes", ascending=False).head(10)
-        fig_bar = px.bar(top_bancos, x="volume_operacoes", y="nome_conglomerado_financeiro", orientation="h", title="Top 10 Instituições por Volume Financeiro", color_discrete_sequence=[COR_PRIMARIA])
-        layout_base(fig_bar, height=420)
-        fig_bar.update_layout(yaxis=dict(autorange="reversed"))
-        st.plotly_chart(fig_bar, use_container_width=True)
+    # KPIs gerais
+    total_volume = df_f["volume_operacoes"].sum()
+    total_ops = df_f["numero_operacoes"].sum()
+    ticket_medio = total_volume / total_ops if total_ops > 0 else 0
+    num_inst = df_f[col_banco].nunique()
 
-# --- ABA 3: GEOGRAFIA ---
-with aba_geografica:
-    st.subheader("Distribuição do Impacto Regional")
-    
-    c_geo_1, c_geo_2 = st.columns(2)
-    with c_geo_1:
-        reg_data = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index().sort_values("volume_operacoes", ascending=False)
-        fig_reg = px.bar(reg_data, x="regiao", y="volume_operacoes", title="Volume Renegociado por Região", color="volume_operacoes", color_continuous_scale=[COR_SECUNDARIA, COR_PRIMARIA])
-        layout_base(fig_reg)
-        fig_reg.update_layout(coloraxis_showscale=False)
-        st.plotly_chart(fig_reg, use_container_width=True)
+    col_k1, col_k2, col_k3, col_k4 = st.columns(4)
+    with col_k1:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">💵 Volume Renegociado</div><div class="kpi-value">{fmt_brl(total_volume)}</div></div>', unsafe_allow_html=True)
+    with col_k2:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">📄 Contratos</div><div class="kpi-value">{fmt_num(total_ops)}</div></div>', unsafe_allow_html=True)
+    with col_k3:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">🎫 Ticket Médio</div><div class="kpi-value">{fmt_brl(ticket_medio)}</div><div class="kpi-sub">Volume / Contratos</div></div>', unsafe_allow_html=True)
+    with col_k4:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">🏛️ Instituições</div><div class="kpi-value">{fmt_num(num_inst)}</div></div>', unsafe_allow_html=True)
 
-    with c_geo_2:
-        uf_data = df_f.groupby("unidade_federacao")["numero_operacoes"].sum().reset_index().sort_values("numero_operacoes", ascending=False).head(15)
-        fig_uf = px.bar(uf_data, x="numero_operacoes", y="unidade_federacao", title="Top 15 Estados (Número de Operações)", orientation="h", color_discrete_sequence=[COR_SUCESSO])
-        layout_base(fig_uf)
-        fig_uf.update_layout(yaxis=dict(autorange="reversed"))
-        st.plotly_chart(fig_uf, use_container_width=True)
+    # Cálculos para os insights executivos
+    reg_data = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
+    total_reg = reg_data["volume_operacoes"].sum()
+    reg_data["pct"] = (reg_data["volume_operacoes"] / total_reg * 100).round(1)
+    lider_regiao = reg_data.loc[reg_data["volume_operacoes"].idxmax()]
+
+    market_hhi = df_f.groupby(col_banco)["numero_operacoes"].sum().reset_index()
+    total_contratos = market_hhi["numero_operacoes"].sum()
+    if total_contratos > 0:
+        lider_banco = market_hhi.loc[market_hhi["numero_operacoes"].idxmax(), col_banco]
+        part_banco = (market_hhi["numero_operacoes"].max() / total_contratos) * 100
+    else:
+        lider_banco = "N/A"
+        part_banco = 0
+
+    hhi_val = calcular_hhi(market_hhi, "numero_operacoes")
+    _, _, expl_hhi = interpretar_hhi(hhi_val)
+
+    evolucao_global = df_f.groupby("data_base")["volume_operacoes"].sum()
+    if len(evolucao_global) > 1:
+        cresc_medio = evolucao_global.pct_change().mean() * 100
+        tendencia = "Programa em expansão sustentada." if cresc_medio > 0 else "Sinal de perda de momentum, requer atenção."
+    else:
+        tendencia = "Dados insuficientes para calcular tendência."
+
+    st.markdown("### 📌 Principais Conclusões (Resumo Executivo)")
+    col_conc1, col_conc2 = st.columns(2)
+    with col_conc1:
+        st.markdown(f"""
+        <div class="insight-box">
+            <div class="insight-label">🎯 Concentração Regional</div>
+            <div class="insight-text">A região <b>{lider_regiao['regiao']}</b> concentra <b>{lider_regiao['pct']:.1f}%</b> do volume total.</div>
+        </div>
+        <div class="insight-box">
+            <div class="insight-label">🏦 Liderança Bancária</div>
+            <div class="insight-text"><b>{lider_banco}</b> responde por <b>{part_banco:.1f}%</b> dos contratos.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_conc2:
+        st.markdown(f"""
+        <div class="insight-box">
+            <div class="insight-label">⚖️ Concentração de Mercado (HHI)</div>
+            <div class="insight-text"><b>{hhi_val:.0f}</b> – {expl_hhi}</div>
+        </div>
+        <div class="insight-box">
+            <div class="insight-label">📈 Tendência Recente</div>
+            <div class="insight-text">{tendencia}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.ma
