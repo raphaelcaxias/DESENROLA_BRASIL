@@ -213,6 +213,15 @@ html, body, .stApp {{
 # ============================================================
 # UTILITÁRIOS
 # ============================================================
+def hex_rgba(hex_color, alpha=0.15):
+    """Converte cor hex para rgba com alpha, compatível com Plotly."""
+    try:
+        h = hex_color.lstrip('#')
+        r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+        return f"rgba({r},{g},{b},{alpha})"
+    except Exception:
+        return f"rgba(128,128,128,{alpha})"
+
 def fmt_brl(v):
     if pd.isna(v) or v == 0: return "R$ 0"
     if v >= 1e9:  return f"R$ {v/1e9:.2f}B".replace(".", ",")
@@ -686,7 +695,7 @@ with tabs[0]:
                 line=dict(color=PALETTE_QUAL[i % len(PALETTE_QUAL)], width=2.5),
                 marker=dict(size=6),
                 fill="tonexty" if i > 0 else "none",
-                fillcolor=f"{PALETTE_QUAL[i % len(PALETTE_QUAL)]}18",
+                fillcolor=hex_rgba(PALETTE_QUAL[i % len(PALETTE_QUAL)], 0.12),
                 hovertemplate=f"<b>{tp}</b><br>%{{x|%b/%Y}}<br>Volume: R$ %{{y:,.0f}}<extra></extra>"
             ))
         # Projeção
@@ -704,7 +713,7 @@ with tabs[0]:
             fig_ev.add_trace(go.Scatter(
                 x=list(datas_fut)+list(datas_fut[::-1]),
                 y=list(upp)+list(low[::-1]),
-                fill="toself", fillcolor=f"{COR_ATENCAO}18",
+                fill="toself", fillcolor=hex_rgba(COR_ATENCAO, 0.12),
                 line=dict(color="rgba(0,0,0,0)"), name="IC 95%", showlegend=False
             ))
         fig_ev.update_layout(title="Volume Renegociado por Faixa do Programa + Projeção")
@@ -768,7 +777,7 @@ with tabs[1]:
             orientation="h",
             marker=dict(
                 color=banco_agg["volume"],
-                colorscale=[[0, f"{COR_PRIMARIA}60"], [1, COR_PRIMARIA]],
+                colorscale=[[0, hex_rgba(COR_PRIMARIA, 0.38)], [1, COR_PRIMARIA]],
                 showscale=False,
                 line=dict(width=0)
             ),
@@ -786,7 +795,7 @@ with tabs[1]:
         fig_tree = px.treemap(
             banco_agg, path=["segmento", col_banco], values="volume",
             color="ticket", color_continuous_scale=[
-                [0, f"{COR_PRIMARIA}40"], [0.5, COR_SECUNDARIA], [1, COR_ACENTO]
+                [0, hex_rgba(COR_PRIMARIA, 0.25)], [0.5, COR_SECUNDARIA], [1, COR_ACENTO]
             ],
             custom_data=["operacoes","ticket"]
         )
@@ -890,7 +899,7 @@ with tabs[2]:
                 x=grp["data_base"], y=grp["volume_operacoes"],
                 name=reg, stackgroup="one",
                 line=dict(color=PALETTE_QUAL[i % len(PALETTE_QUAL)], width=0.5),
-                fillcolor=f"{PALETTE_QUAL[i % len(PALETTE_QUAL)]}AA",
+                fillcolor=hex_rgba(PALETTE_QUAL[i % len(PALETTE_QUAL)], 0.67),
                 hovertemplate=f"<b>{reg}</b><br>%{{x|%b/%Y}}<br>R$ %{{y:,.0f}}<extra></extra>"
             ))
         fig_area.update_layout(title="Evolução do Volume por Região (Área Empilhada)")
@@ -981,7 +990,7 @@ with tabs[4]:
         name="Volume",
         marker=dict(
             color=pareto_df["volume_operacoes"],
-            colorscale=[[0,f"{COR_PRIMARIA}40"],[1,COR_PRIMARIA]],
+            colorscale=[[0, hex_rgba(COR_PRIMARIA, 0.25)],[1,COR_PRIMARIA]],
             showscale=False
         ),
         hovertemplate="<b>%{x}</b><br>Volume: R$ %{y:,.0f}<extra></extra>"
