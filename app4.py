@@ -143,8 +143,10 @@ def layout_base(fig, height=400, showlegend=True):
 
 @st.cache_data
 def calcular_hhi(df, col):
-    total = df[col].sum()
-    return 0 if total == 0 else ((df[col]/total)**2).sum()*10000
+    # Proteção extra para garantir soma numérica no HHI
+    valores_numericos = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    total = valores_numericos.sum()
+    return 0 if total == 0 else ((valores_numericos/total)**2).sum()*10000
 
 @st.cache_data
 def interpretar_hhi(hhi):
@@ -157,9 +159,11 @@ def interpretar_hhi(hhi):
 # ============================================================
 @st.cache_data
 def projetar_holt_winters(series_volume, datas, periodos=3):
-    if len(series_volume) < 4: return None, None, None, None
+    # Força os dados da série a serem estritamente numéricos float
+    series_limpa = pd.to_numeric(series_volume, errors="coerce").fillna(0)
+    if len(series_limpa) < 4: return None, None, None, None
     try:
-        modelo = ExponentialSmoothing(series_volume.values, trend="add", seasonal=None).fit(optimized=True)
+        modelo = ExponentialSmoothing(series_limpa.values, trend="add", seasonal=None).fit(optimized=True)
         previsao = modelo.forecast(periodos)
         datas_futuras = pd.date_range(datas.max(), periods=periodos+1, freq="MS")[1:]
         sigma = np.std(modelo.resid) if len(modelo.resid) > 0 else 0
@@ -168,14 +172,14 @@ def projetar_holt_winters(series_volume, datas, periodos=3):
         return None, None, None, None
 
 # ============================================================
-# PIPELINE DE DADOS SIMULADOS (MOCK) CASO NÃO EXISTA O ARQUIVO
+# PIPELINE DE TRATAMENTO DE DADOS
 # ============================================================
 @st.cache_data(ttl=3600)
 def carregar_dados():
     try:
         df = pd.read_csv("dados_desenrola.csv", sep=";", encoding="utf-8")
     except Exception:
-        # Geração de Dados Mock ultra-realistas para evitar quebra do app
+        # Fallback de dados fictícios para fins de teste se o arquivo não estiver presente
         datas = pd.date_range(start="2024-01-01", periods=12, freq="MS").strftime("%Y%m").astype(int)
         bancos_mock = ["Banco Itaú", "Banco do Brasil", "Bradesco", "Caixa Econômica", "Nubank", "Banco Inter"]
         ufs = ["SP", "RJ", "MG", "BA", "PR", "RS", "PE", "CE", "DF", "AM"]
@@ -193,6 +197,14 @@ def carregar_dados():
         df = pd.DataFrame(rows, columns=["data_base", "nome_conglomerado_financeiro", "unidade_federacao", "tipo_desenrola", "numero_operacoes", "volume_operacoes"])
     
     df.columns = df.columns.str.lower().str.strip()
+    
+    # Tratamento agressivo de strings numéricas (Remove pontos de milhar e substitui vírgulas decimais)
+    for col in ["volume_operacoes", "numero_operacoes"]:
+        if col in df.columns:
+            if df[col].dtype == object:
+                df[col] = df[col].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
     df["data_base"] = pd.to_datetime(df["data_base"].astype(str), format="%Y%m", errors="coerce")
     df["tipo_banco"] = df["nome_conglomerado_financeiro"].apply(classificar_banco)
     df["regiao"]     = df["unidade_federacao"].apply(agrupar_regiao)
@@ -220,22 +232,26 @@ with st.sidebar:
     bancos  = sorted(df["tipo_banco"].unique())
     banco   = st.multiselect("Segmento Institucional", bancos, default=bancos)
 
+# Aplicação de Filtros Dinâmicos
 df_f = df[df["tipo_desenrola"].isin(tipo) & df["regiao"].isin(regiao) & df["tipo_banco"].isin(banco)]
+
 if df_f.empty:
     st.warning("Nenhum registro encontrado para a combinação de filtros selecionada.")
     st.stop()
 
 # ============================================================
-# CABEÇALHO & SUMÁRIO EXECUTIVO
+# CÁLCULO DE KPIS DO TOPO (BLINDAGEM TYPE_ERROR)
+# ============================================================
+total_volume = float(df_f["volume_operacoes"].sum())
+total_ops    = float(df_f["numero_operacoes"].sum())
+ticket_medio = float(total_volume / total_ops) if total_ops > 0 else 0.0
+num_inst     = int(df_f["nome_conglomerated_financeiro"].nunique()) if "nome_conglomerated_financeiro" in df_f.columns else int(df_f["nome_conglomerado_financeiro"].nunique())
+
+# ============================================================
+# CABEÇALHO & VISÃO GERAL
 # ============================================================
 st.title("🏦 Desenrola Brasil – Painel Executivo")
 st.caption("Monitoramento estratégico das operações de renegociação de dívidas ativas")
-
-# KPIs do Topo
-total_volume = df_f["volume_operacoes"].sum()
-total_ops = df_f["numero_operacoes"].sum()
-ticket_medio = total_volume / total_ops if total_ops > 0 else 0
-num_inst = df_f["nome_conglomerado_financeiro"].nunique()
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">💵 Volume Total</div><div class="kpi-value">{fmt_brl(total_volume)}</div><div class="kpi-sub">Total renegociado</div></div>', unsafe_allow_html=True)
@@ -243,13 +259,13 @@ with kpi2: st.markdown(f'<div class="kpi-card"><div class="kpi-title">📄 Total
 with kpi3: st.markdown(f'<div class="kpi-card"><div class="kpi-title">🎫 Ticket Médio</div><div class="kpi-value">{fmt_brl(ticket_medio)}</div><div class="kpi-sub">Valor médio por contrato</div></div>', unsafe_allow_html=True)
 with kpi4: st.markdown(f'<div class="kpi-card"><div class="kpi-title">🏛️ Players Ativos</div><div class="kpi-value">{num_inst}</div><div class="kpi-sub">Instituições financeiras</div></div>', unsafe_allow_html=True)
 
-# CÁLCULO DE INSIGHTS AUTOMATIZADOS
+# CÁLCULO DE INSIGHTS AUTOMATIZADOS PARA TEXTO
 market_share = df_f.groupby("nome_conglomerado_financeiro")["numero_operacoes"].sum().reset_index()
 hhi_val = calcular_hhi(market_share, "numero_operacoes")
 lbl_hhi, badge_hhi, desc_hhi = interpretar_hhi(hhi_val)
 
 reg_share = df_f.groupby("regiao")["volume_operacoes"].sum().reset_index()
-lider_reg = reg_share.loc[reg_share["volume_operacoes"].idxmax()]
+lider_reg = reg_share.loc[reg_share["volume_operacoes"].idxmax()] if not reg_share.empty else {"regiao": "N/A", "volume_operacoes": 0}
 
 # ============================================================
 # ESTAÇÃO DE ABAS ANALÍTICAS
@@ -262,15 +278,12 @@ with aba_temporal:
     evolucao_mensal = df_f.groupby("data_base")["volume_operacoes"].sum().reset_index()
     
     fig_temp = go.Figure()
-    # Linha Realizado
     fig_temp.add_trace(go.Scatter(x=evolucao_mensal["data_base"], y=evolucao_mensal["volume_operacoes"], mode="lines+markers", name="Volume Realizado", line=dict(color=COR_PRIMARIA, width=3)))
     
-    # Média Móvel
     if len(evolucao_mensal) >= 3:
         evolucao_mensal["ma"] = evolucao_mensal["volume_operacoes"].rolling(3).mean()
         fig_temp.add_trace(go.Scatter(x=evolucao_mensal["data_base"], y=evolucao_mensal["ma"], mode="lines", name="Média Móvel (3 Meses)", line=dict(color=COR_ATENCAO, dash="dash")))
 
-    # Projeção Estatística
     df_futuras, prev, low, upp = projetar_holt_winters(evolucao_mensal["volume_operacoes"], evolucao_mensal["data_base"])
     if df_futuras is not None:
         fig_temp.add_trace(go.Scatter(x=df_futuras, y=prev, mode="lines+markers", name="Projeção (Holt-Winters)", line=dict(color=COR_SECUNDARIA, dash="dot")))
@@ -293,14 +306,12 @@ with aba_bancos:
         </div>
         """, unsafe_allow_html=True)
         
-        # Segmentação por tipo de instituição
         banco_seg = df_f.groupby("tipo_banco")["volume_operacoes"].sum().reset_index()
         fig_pie = px.pie(banco_seg, values="volume_operacoes", names="tipo_banco", color_discrete_sequence=[COR_PRIMARIA, COR_SECUNDARIA, COR_SUCESSO, COR_ATENCAO])
         layout_base(fig_pie, height=280, showlegend=True)
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with c_banco_2:
-        # Pareto de Grandes Devedores/Bancos
         top_bancos = df_f.groupby("nome_conglomerado_financeiro")["volume_operacoes"].sum().reset_index().sort_values("volume_operacoes", ascending=False).head(10)
         fig_bar = px.bar(top_bancos, x="volume_operacoes", y="nome_conglomerado_financeiro", orientation="h", title="Top 10 Instituições por Volume Financeiro", color_discrete_sequence=[COR_PRIMARIA])
         layout_base(fig_bar, height=420)
