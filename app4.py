@@ -58,8 +58,8 @@ else:
     SIDEBAR = "#0D1117"
     SDTXT   = "#E6EDF3"
 
-# paleta qualitativa (sempre cores sólidas, sem alpha no hex)
-QUAL = [P1, AMBER, VERM, AZUL, "#7B5EA7", TXT2, P2, "#C97C3A"]
+# paleta qualitativa (cores fixas para gráficos, sem TXT2)
+CORES_GRAFICOS = [P1, AMBER, VERM, AZUL, P2, P3, "#7B5EA7", "#C97C3A"]
 
 # ── CSS ───────────────────────────────────────────────────────
 st.markdown(f"""
@@ -296,7 +296,7 @@ for col_, ic, tt, vl, sb, cls_ in [
           <div class="kpi-sb">{sb}</div>
         </div>""",unsafe_allow_html=True)
 
-# ── Métricas de concentração (usadas nos alertas e resumo) ─────
+# ── Métricas de concentração ───────────────────────────────────
 b_agg = (dff.groupby(COL_B)["numero_operacoes"].sum().reset_index())
 hhi_v = hhi(b_agg,"numero_operacoes")
 
@@ -336,11 +336,10 @@ reg_df["pct"] = reg_df["volume_operacoes"]/reg_df["volume_operacoes"].sum()*100
 lider_reg = reg_df.loc[reg_df["volume_operacoes"].idxmax()]
 top2_pct  = reg_df.nlargest(2,"volume_operacoes")["pct"].sum()
 
-t_cont = b_agg["numero_operacoes"].sum()
-if t_cont>0:
+if ops_tot>0:
     lider_b   = b_agg.loc[b_agg["numero_operacoes"].idxmax(), COL_B]
-    part_b    = b_agg["numero_operacoes"].max()/t_cont*100
-    top5_part = b_agg.nlargest(5,"numero_operacoes")["numero_operacoes"].sum()/t_cont*100
+    part_b    = b_agg["numero_operacoes"].max()/ops_tot*100
+    top5_part = b_agg.nlargest(5,"numero_operacoes")["numero_operacoes"].sum()/ops_tot*100
 else:
     lider_b, part_b, top5_part = "N/A", 0, 0
 
@@ -391,7 +390,7 @@ with tabs[0]:
         tipos_u = sorted(evol_tp["tipo_desenrola"].unique())
         for i,tp in enumerate(tipos_u):
             g = evol_tp[evol_tp["tipo_desenrola"]==tp]
-            cor = QUAL[i % len(QUAL)]
+            cor = CORES_GRAFICOS[i % len(CORES_GRAFICOS)]
             fig1.add_trace(go.Scatter(
                 x=g["data_base"], y=g["volume_operacoes"],
                 mode="lines+markers", name=str(tp),
@@ -485,6 +484,10 @@ with tabs[1]:
     bagg2["seg"]    = bagg2[COL_B].apply(class_banco)
     bagg2 = bagg2.nlargest(top_n,"volume")
 
+    # Prepara customdata sem NaN (substitui NaN por "N/A")
+    bagg2["ticket_str"] = bagg2["ticket"].apply(lambda x: f"R$ {x:,.0f}" if pd.notna(x) else "N/A")
+    customdata_raw = bagg2[["ops","ticket_str","seg"]].values
+
     cb1, cb2 = st.columns(2)
     with cb1:
         fig4 = go.Figure(go.Bar(
@@ -492,8 +495,8 @@ with tabs[1]:
             y=bagg2[COL_B].str[:25],
             orientation="h",
             marker_color=P1,
-            customdata=bagg2[["ops","ticket","seg"]].values,
-            hovertemplate="<b>%{y}</b><br>Volume: R$ %{x:,.0f}<br>Ops: %{customdata[0]:,.0f}<br>Ticket: R$ %{customdata[1]:,.0f}<br>Seg: %{customdata[2]}<extra></extra>"
+            customdata=customdata_raw,
+            hovertemplate="<b>%{y}</b><br>Volume: R$ %{x:,.0f}<br>Ops: %{customdata[0]:,.0f}<br>Ticket: %{customdata[1]}<br>Seg: %{customdata[2]}<extra></extra>"
         ))
         fig4.update_layout(title=f"Volume – Top {top_n} Instituições",
                            yaxis=dict(autorange="reversed"))
@@ -517,12 +520,11 @@ with tabs[1]:
         except Exception:
             st.info("Treemap indisponível para os filtros.")
 
-    # Indicadores HHI, CR, Gini
-    hhi_b = hhi(bagg2.rename(columns={"volume":"v"}), "v") if "v" not in bagg2 else hhi(bagg2,"volume")
-    hhi_b = hhi(dff.groupby(COL_B)["volume_operacoes"].sum().reset_index(),"volume_operacoes")
+    # Indicadores HHI, CR, Gini (usando hhi_v já calculado)
     cr3 = bagg2.nlargest(3,"volume")["volume"].sum()/bagg2["volume"].sum()*100 if len(bagg2)>=3 else 0
     cr5 = bagg2.nlargest(5,"volume")["volume"].sum()/bagg2["volume"].sum()*100 if len(bagg2)>=5 else 0
     gini_b = gini(bagg2["volume"])
+
     m1,m2,m3,m4 = st.columns(4)
     for col_,tt,vl,sb in [
         (m1,"📐 HHI",f"{hhi_v:.0f}",hhi_lbl),
@@ -554,7 +556,7 @@ with tabs[2]:
         fig6 = make_subplots(specs=[[{"secondary_y":True}]])
         fig6.add_trace(go.Bar(
             x=rdf["regiao"], y=rdf["volume"], name="Volume",
-            marker_color=[QUAL[i%len(QUAL)] for i in range(len(rdf))],
+            marker_color=[CORES_GRAFICOS[i%len(CORES_GRAFICOS)] for i in range(len(rdf))],
             hovertemplate="<b>%{x}</b><br>R$ %{y:,.0f}<extra></extra>"
         ), secondary_y=False)
         fig6.add_trace(go.Scatter(
@@ -574,7 +576,7 @@ with tabs[2]:
         fig7 = go.Figure(go.Pie(
             labels=rdf["regiao"], values=rdf["volume"],
             hole=0.55,
-            marker=dict(colors=QUAL[:len(rdf)],line=dict(color=BG,width=2)),
+            marker=dict(colors=CORES_GRAFICOS[:len(rdf)],line=dict(color=BG,width=2)),
             hovertemplate="<b>%{label}</b><br>R$ %{value:,.0f}<br>%{percent}<extra></extra>",
             textinfo="label+percent", textfont=dict(size=11)
         ))
@@ -590,7 +592,7 @@ with tabs[2]:
     fig8 = go.Figure()
     for i,reg in enumerate(sorted(ereg["regiao"].unique())):
         g = ereg[ereg["regiao"]==reg]
-        cor = QUAL[i%len(QUAL)]
+        cor = CORES_GRAFICOS[i%len(CORES_GRAFICOS)]
         fig8.add_trace(go.Scatter(
             x=g["data_base"], y=g["volume_operacoes"],
             name=reg, stackgroup="one",
@@ -678,7 +680,7 @@ with tabs[3]:
     sc2["ms"]     = sc2["ops"]/sc2["ops"].sum()*100
     sc2["seg"]    = sc2[COL_B].apply(class_banco)
     sc2 = sc2.dropna().query("ops>50")
-    seg_cores = {s:QUAL[i%len(QUAL)] for i,s in enumerate(sc2["seg"].unique())}
+    seg_cores = {s:CORES_GRAFICOS[i%len(CORES_GRAFICOS)] for i,s in enumerate(sc2["seg"].unique())}
     fig10 = go.Figure()
     for seg,grp in sc2.groupby("seg"):
         sz = np.log1p(grp["vol"]/grp["vol"].max()+0.01)*20+8
