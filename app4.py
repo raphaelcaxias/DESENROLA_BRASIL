@@ -1,12 +1,13 @@
 """
-Debt Settlement Brazil – Intelligence Platform v2.0
-Refactored with enterprise-grade robustness, advanced analytics, and premium UX.
+Debt Settlement Brazil – Intelligence Platform v2.1
+Refactored with ONLY allowed dependencies:
+- streamlit, pandas, numpy, plotly, statsmodels, scikit-learn
 
 Key Improvements:
 - Synthetic data fallback for zero-config demo
 - Working Brazil choropleth map with official GeoJSON
 - Advanced analytics: outlier detection, correlations, time series decomposition
-- Multi-format export (CSV, Excel, PDF, JSON)
+- Multi-format export (CSV, JSON)
 - Granular caching for instant tab switching
 - Enterprise error handling and structured logging
 """
@@ -22,18 +23,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.seasonal import seasonal_decompose
-from scipy import stats
 import re
 import warnings
 import logging
 from datetime import datetime
-from typing import Optional, Tuple, List, Dict, Any, Union
+from typing import Optional, Tuple, List, Dict, Any
 import base64
 import json
 import io
-import hashlib
-from dataclasses import dataclass, field
-from functools import lru_cache
+from dataclasses import dataclass
+from urllib.request import urlopen, Request
+from urllib.error import URLError
 
 # ============================================================
 # CONFIGURATION & CONSTANTS
@@ -75,21 +75,16 @@ CONFIG = AppConfig()
 # ============================================================
 TEXTS = {
     "pt": {
-        # App
         "app_title": "Desenrola Brasil",
         "app_subtitle": "Plataforma de Inteligência",
         "hero_title": "Desenrola Brasil",
         "hero_subtitle": "Inteligência analítica para renegociação de dívidas · Fonte: Banco Central (SCR)",
-        
-        # KPIs
         "volume": "Volume Renegociado",
         "contracts": "Total de Contratos",
         "avg_ticket": "Ticket Médio",
         "institutions": "Instituições",
         "states": "Estados",
         "vs_prev_month": "vs mês anterior",
-        
-        # Alerts
         "smart_alerts": "Alertas Inteligentes",
         "alert_sharp_drop": "🔴 Queda Abrupta – volume caiu {:.1f}%",
         "alert_slowdown": "🟡 Desaceleração – queda de {:.1f}%",
@@ -100,10 +95,8 @@ TEXTS = {
         "alert_competitive": "🟢 Mercado Competitivo – HHI < {}",
         "alert_high_regional_inequality": "🔴 Alta Desigualdade Regional – Gini = {:.2f}",
         "alert_regional_inequality": "🟡 Desigualdade Regional – Gini = {:.2f}",
-        "alert_outliers_detected": "🟠 {} outliers detectados nas operações",
-        "alert_seasonal_pattern": "🔵 Padrão sazonal identificado: {}",
-        
-        # Insights
+        "alert_outliers_detected": "🟠 {} outliers detectados",
+        "alert_seasonal_pattern": "🔵 Padrão sazonal identificado",
         "automated_insights": "Insights Automáticos",
         "regional_concentration": "Concentração Regional",
         "leading_area": "Área Líder",
@@ -118,64 +111,42 @@ TEXTS = {
         "insight_hhi": "Índice Herfindahl-Hirschman: <b>{:.0f}</b>",
         "insight_correlation": "Correlação Ticket × Volume: <b>{:.2f}</b>",
         "insight_top_banks": "Top 3 bancos controlam <b>{:.1f}%</b> do mercado.",
-        
-        # Tabs
         "time_series": "Evolução Temporal",
         "bank_concentration": "Concentração Bancária",
         "regional_analysis": "Análise Regional",
         "advanced_analytics": "Análise Avançada",
         "distribution": "Distribuição",
-        
-        # Tab 1
         "program_evolution": "Evolução do Programa",
         "monthly_growth": "Crescimento Mensal (MoM)",
         "heatmap_title": "Mapa de Calor – Volume por Faixa",
         "ren_intensity": "Intensidade de Renegociação",
         "seasonal_decomposition": "Decomposição Sazonal",
-        
-        # Tab 2
         "top_n_institutions": "Top N Instituições",
         "treemap_title": "Treemap – Distribuição por Segmento",
-        "bank_analysis": "Análise Bancária",
-        
-        # Tab 3
         "regional_distribution": "Distribuição Regional",
         "volume_and_ticket_by_region": "Volume e Ticket Médio por Região",
         "regional_share": "Participação Regional",
-        
-        # Tab 4
         "advanced_analytics_title": "Análises Avançadas",
         "clustering_title": "Clusterização (Operações × Ticket)",
         "concentration_radar": "Radar de Concentração",
         "scatter_title": "Ticket Médio vs Market Share",
         "outlier_detection": "Detecção de Outliers",
         "correlation_matrix": "Matriz de Correlação",
-        
-        # Tab 5
         "pareto_title": "Curva de Pareto",
         "pareto_interpretation": "Interpretação",
         "pareto_text": "instituições concentram 80% do volume total renegociado.",
-        
-        # Export
         "export_section": "Exportar Dados",
         "csv_download": "CSV (dados filtrados)",
-        "excel_download": "Excel (multi-abas)",
         "report_download": "Relatório TXT",
-        "pdf_download": "PDF Completo",
-        
-        # Footer
+        "json_download": "JSON (dados estruturados)",
         "footer_text": "Desenrola Brasil · Inteligência Financeira",
         "footer_source": "Fonte: Banco Central do Brasil (SCR)",
-        
-        # Sidebar
         "data_source": "Fonte de Dados",
         "filters": "Filtros",
         "data_quality": "Qualidade dos Dados",
         "reset_filters": "Resetar Filtros",
         "upload_csv": "Carregar CSV",
         "use_demo_data": "Usar dados de demonstração",
-        
-        # Status messages
         "loading_data": "🔄 Carregando dados...",
         "processing": "Processando...",
         "no_data": "⚠️ Nenhum dado encontrado com os filtros selecionados.",
@@ -183,29 +154,18 @@ TEXTS = {
         "heatmap_unavailable": "🔥 Heatmap indisponível para os filtros atuais.",
         "clustering_unavailable": "🔬 Dados insuficientes para clusterização.",
         "outliers_unavailable": "⚠️ Detecção de outliers indisponível.",
-        
-        # Tooltips
-        "tooltip_cr3": "Concentration Ratio 3: participação dos 3 maiores bancos",
-        "tooltip_cr5": "Concentration Ratio 5: participação dos 5 maiores bancos",
-        "tooltip_gini": "Índice de Gini: 0 = perfeita igualdade, 1 = máxima desigualdade",
-        "tooltip_hhi": "Herfindahl-Hirschman Index: <1500 = competitivo, 1500-2500 = moderado, >2500 = concentrado",
     },
     "en": {
-        # App
         "app_title": "Debt Settlement Brazil",
         "app_subtitle": "Intelligence Platform",
         "hero_title": "Debt Settlement Brazil",
         "hero_subtitle": "Analytical intelligence for debt renegotiation · Source: Central Bank (SCR)",
-        
-        # KPIs
         "volume": "Renegotiated Volume",
         "contracts": "Total Contracts",
         "avg_ticket": "Average Ticket",
         "institutions": "Institutions",
         "states": "States",
         "vs_prev_month": "vs previous month",
-        
-        # Alerts
         "smart_alerts": "Smart Alerts",
         "alert_sharp_drop": "🔴 Sharp Drop – volume fell {:.1f}%",
         "alert_slowdown": "🟡 Slowdown – drop of {:.1f}%",
@@ -216,10 +176,8 @@ TEXTS = {
         "alert_competitive": "🟢 Competitive Market – HHI < {}",
         "alert_high_regional_inequality": "🔴 High Regional Inequality – Gini = {:.2f}",
         "alert_regional_inequality": "🟡 Regional Inequality – Gini = {:.2f}",
-        "alert_outliers_detected": "🟠 {} outliers detected in operations",
-        "alert_seasonal_pattern": "🔵 Seasonal pattern identified: {}",
-        
-        # Insights
+        "alert_outliers_detected": "🟠 {} outliers detected",
+        "alert_seasonal_pattern": "🔵 Seasonal pattern identified",
         "automated_insights": "Automated Insights",
         "regional_concentration": "Regional Concentration",
         "leading_area": "Leading Area",
@@ -234,64 +192,42 @@ TEXTS = {
         "insight_hhi": "Herfindahl-Hirschman Index: <b>{:.0f}</b>",
         "insight_correlation": "Ticket × Volume Correlation: <b>{:.2f}</b>",
         "insight_top_banks": "Top 3 banks control <b>{:.1f}%</b> of the market.",
-        
-        # Tabs
         "time_series": "Time Series",
         "bank_concentration": "Bank Concentration",
         "regional_analysis": "Regional Analysis",
         "advanced_analytics": "Advanced Analytics",
         "distribution": "Distribution",
-        
-        # Tab 1
         "program_evolution": "Program Evolution",
         "monthly_growth": "Monthly Growth (MoM)",
         "heatmap_title": "Heatmap – Volume by Tranche",
         "ren_intensity": "Renegotiation Intensity",
         "seasonal_decomposition": "Seasonal Decomposition",
-        
-        # Tab 2
         "top_n_institutions": "Top N Institutions",
         "treemap_title": "Treemap – Distribution by Segment",
-        "bank_analysis": "Bank Analysis",
-        
-        # Tab 3
         "regional_distribution": "Regional Distribution",
         "volume_and_ticket_by_region": "Volume and Average Ticket by Region",
         "regional_share": "Regional Share",
-        
-        # Tab 4
         "advanced_analytics_title": "Advanced Analytics",
         "clustering_title": "Clustering (Operations × Ticket)",
         "concentration_radar": "Concentration Radar",
         "scatter_title": "Average Ticket vs Market Share",
         "outlier_detection": "Outlier Detection",
         "correlation_matrix": "Correlation Matrix",
-        
-        # Tab 5
         "pareto_title": "Pareto Curve",
         "pareto_interpretation": "Interpretation",
         "pareto_text": "institutions concentrate 80% of the total renegotiated volume.",
-        
-        # Export
         "export_section": "Export Data",
         "csv_download": "CSV (filtered data)",
-        "excel_download": "Excel (multi-sheet)",
         "report_download": "TXT Report",
-        "pdf_download": "Full PDF",
-        
-        # Footer
+        "json_download": "JSON (structured data)",
         "footer_text": "Debt Settlement Brazil · Financial Intelligence",
         "footer_source": "Source: Central Bank of Brazil (SCR)",
-        
-        # Sidebar
         "data_source": "Data Source",
         "filters": "Filters",
         "data_quality": "Data Quality",
         "reset_filters": "Reset Filters",
         "upload_csv": "Upload CSV",
         "use_demo_data": "Use demo data",
-        
-        # Status messages
         "loading_data": "🔄 Loading data...",
         "processing": "Processing...",
         "no_data": "⚠️ No data matches the selected filters.",
@@ -299,12 +235,6 @@ TEXTS = {
         "heatmap_unavailable": "🔥 Heatmap unavailable for current filters.",
         "clustering_unavailable": "🔬 Insufficient data for clustering.",
         "outliers_unavailable": "⚠️ Outlier detection unavailable.",
-        
-        # Tooltips
-        "tooltip_cr3": "Concentration Ratio 3: share of top 3 banks",
-        "tooltip_cr5": "Concentration Ratio 5: share of top 5 banks",
-        "tooltip_gini": "Gini Index: 0 = perfect equality, 1 = maximum inequality",
-        "tooltip_hhi": "HHI: <1500 = competitive, 1500-2500 = moderate, >2500 = concentrated",
     }
 }
 
@@ -325,7 +255,6 @@ st.set_page_config(
     page_title="Desenrola Brasil | Intelligence Platform",
     page_icon="🏦",
     layout="wide",
-    initial_sidebar_state="expanded",
     initial_sidebar_state="expanded"
 )
 
@@ -400,7 +329,6 @@ CSS = f"""
     margin: 0 auto;
 }}
 
-/* ===== HERO ===== */
 .hero {{
     background: linear-gradient(135deg, rgba(0,168,107,0.08) 0%, rgba(0,102,204,0.05) 100%);
     backdrop-filter: blur(10px);
@@ -452,18 +380,6 @@ CSS = f"""
     margin-bottom: 0.5rem;
     font-weight: 600;
 }}
-
-/* ===== KPI CARDS ===== */
-.kpi-grid {{
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}}
-
-@media (max-width: 1200px) {{ .kpi-grid {{ grid-template-columns: repeat(3, 1fr); }} }}
-@media (max-width: 800px) {{ .kpi-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
-@media (max-width: 600px) {{ .kpi-grid {{ grid-template-columns: 1fr; }} }}
 
 .kpi-card {{
     background: {COLORS["CARD_GLASS"]};
@@ -522,7 +438,6 @@ CSS = f"""
 .kpi-trend.positive {{ background: rgba(0,168,107,0.15); color: {COLORS["VERDE"]}; }}
 .kpi-trend.negative {{ background: rgba(220,38,38,0.15); color: {COLORS["VERM"]}; }}
 
-/* ===== INSIGHT CARDS ===== */
 .insight-grid {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -568,7 +483,6 @@ CSS = f"""
     margin-top: 0.5rem;
 }}
 
-/* ===== ALERTS ===== */
 .al {{
     padding: 0.6rem 1rem;
     border-radius: 12px;
@@ -584,7 +498,6 @@ CSS = f"""
 .al.ok {{ background: rgba(0,168,107,0.1); border-left: 3px solid {COLORS["VERDE"]}; color: {COLORS["VERDE"]}; }}
 .al.in {{ background: rgba(59,130,246,0.1); border-left: 3px solid {COLORS["AZUL"]}; color: {COLORS["AZUL"]}; }}
 
-/* ===== TABS ===== */
 .stTabs [data-baseweb="tab-list"] {{
     gap: 0.5rem;
     background: transparent;
@@ -610,104 +523,12 @@ CSS = f"""
     border-color: {COLORS["P1"]};
 }}
 
-/* ===== SIDEBAR ===== */
 section[data-testid="stSidebar"] {{
     background: {COLORS["CARD_GLASS"]};
     backdrop-filter: blur(12px);
     border-right: 1px solid {COLORS["BORDA"]};
 }}
 
-section[data-testid="stSidebar"] .stSelectbox label,
-section[data-testid="stSidebar"] .stMultiSelect label {{
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: {COLORS["TXT2"]};
-}}
-
-/* ===== METRICS ===== */
-[data-testid="stMetric"] {{
-    background: {COLORS["CARD_GLASS"]};
-    backdrop-filter: blur(12px);
-    border: 1px solid {COLORS["BORDA"]};
-    border-radius: 16px;
-    padding: 1rem;
-    transition: all 0.3s;
-}}
-[data-testid="stMetric"]:hover {{
-    border-color: {COLORS["P1"]};
-    transform: translateY(-2px);
-}}
-[data-testid="stMetricLabel"] {{
-    color: {COLORS["TXT2"]};
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}}
-[data-testid="stMetricValue"] {{
-    color: {COLORS["TXT"]};
-    font-weight: 700;
-    font-size: 1.5rem;
-}}
-
-/* ===== LOADING SKELETON ===== */
-.skeleton {{
-    background: linear-gradient(90deg, {COLORS["BORDA"]} 25%, {COLORS["CARD"]} 50%, {COLORS["BORDA"]} 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 12px;
-    height: 200px;
-}}
-
-@keyframes loading {{
-    0% {{ background-position: 200% 0; }}
-    100% {{ background-position: -200% 0; }}
-}}
-
-/* ===== TOOLTIPS ===== */
-.tooltip {{
-    position: relative;
-    display: inline-block;
-    cursor: help;
-    border-bottom: 1px dotted {COLORS["TXT2"]};
-}}
-
-.tooltip .tooltiptext {{
-    visibility: hidden;
-    width: 200px;
-    background-color: {COLORS["CARD"]};
-    color: {COLORS["TXT"]};
-    text-align: center;
-    border-radius: 8px;
-    padding: 0.5rem;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -100px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    border: 1px solid {COLORS["BORDA"]};
-    font-size: 0.75rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}}
-
-.tooltip:hover .tooltiptext {{
-    visibility: visible;
-    opacity: 1;
-}}
-
-/* ===== FOOTER ===== */
-.footer {{
-    text-align: center;
-    padding: 1.5rem 0 0.5rem;
-    margin-top: 2rem;
-    border-top: 1px solid {COLORS["BORDA"]};
-    font-size: 0.65rem;
-    color: {COLORS["TXT2"]};
-}}
-
-/* ===== DATA SOURCE CARD ===== */
 .source-card {{
     background: {COLORS["CARD_GLASS"]};
     border-radius: 12px;
@@ -727,28 +548,13 @@ section[data-testid="stSidebar"] .stMultiSelect label {{
     margin-right: 0.5rem;
 }}
 
-/* ===== CHART CONTAINER ===== */
-.chart-container {{
-    background: {COLORS["CARD_GLASS"]};
-    border-radius: 16px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border: 1px solid {COLORS["BORDA"]};
-}}
-
-/* ===== STAT CARD ===== */
-.stat-mini {{
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    background: rgba(0,168,107,0.1);
-    padding: 0.2rem 0.5rem;
-    border-radius: 8px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: {COLORS["P1"]};
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
+.footer {{
+    text-align: center;
+    padding: 1.5rem 0 0.5rem;
+    margin-top: 2rem;
+    border-top: 1px solid {COLORS["BORDA"]};
+    font-size: 0.65rem;
+    color: {COLORS["TXT2"]};
 }}
 </style>
 """
@@ -783,10 +589,6 @@ def fmt_num(v: float, decimals: int = 0) -> str:
     if decimals > 0:
         return f"{v:,.{decimals}f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{int(v):,}".replace(",", ".")
-
-def fmt_pct(v: float, decimals: int = 1) -> str:
-    """Format percentage."""
-    return f"{v:.{decimals}f}%".replace(".", ",")
 
 def classify_bank(name: str) -> str:
     """Classify bank into segment based on name."""
@@ -829,7 +631,7 @@ def hhi(series: pd.Series) -> float:
     return float((shares ** 2).sum() * 10000)
 
 def gini(series: pd.Series) -> float:
-    """Calculate Gini coefficient."""
+    """Calculate Gini coefficient using numpy."""
     arr = np.sort(series.dropna().values)
     n = len(arr)
     if n == 0 or arr.sum() == 0:
@@ -879,7 +681,6 @@ class DataGenerator:
         """Generate synthetic Desenrola data with realistic distributions."""
         np.random.seed(42)
         
-        # Define dimensions
         dates = pd.date_range("2023-07-01", "2024-12-01", freq="MS")
         ufs = ["SP", "RJ", "MG", "RS", "PR", "BA", "PE", "CE", "PA", "MA", 
                "SC", "DF", "GO", "MT", "MS", "AM", "ES", "PB", "RN", "AL"]
@@ -893,24 +694,20 @@ class DataGenerator:
         tipos = ["Faixa 1", "Faixa 2", "Faixa 3", "Faixa 4"]
         areas = ["Crédito Pessoal", "Cartão de Crédito", "Cheque Especial", "Financiamento"]
         
-        # Weights for realistic distribution
         uf_weights = np.array([0.25, 0.15, 0.10, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.03,
                                0.03, 0.02, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
         banco_weights = np.array([0.18, 0.15, 0.12, 0.10, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03,
                                   0.02, 0.02, 0.02, 0.02, 0.01, 0.01, 0.01, 0.005, 0.003, 0.002])
         
-        # Normalize weights
         uf_weights = uf_weights / uf_weights.sum()
         banco_weights = banco_weights / banco_weights.sum()
         
         data = []
         for _ in range(n_records):
-            # Generate correlated volume and operations
             base_volume = np.random.lognormal(mean=14, sigma=1.2)
             ops = max(1, int(base_volume / np.random.lognormal(mean=3, sigma=0.5)))
             volume = base_volume * np.random.uniform(0.8, 1.2)
             
-            # Add temporal trend (growth over time)
             date_idx = np.random.choice(len(dates), p=np.linspace(0.02, 0.08, len(dates)))
             date = dates[date_idx]
             trend_factor = 1 + (date_idx / len(dates)) * 0.5
@@ -959,27 +756,22 @@ class DataLoader:
         df = df.copy()
         df.columns = df.columns.str.lower().str.strip()
         
-        # Clean numeric columns
         for col in ["numero_operacoes", "volume_operacoes"]:
             if col in df.columns:
                 df[col] = DataLoader.clean_numeric(df[col])
         
-        # Parse dates
         if "data_base" in df.columns:
             df["data_base"] = pd.to_datetime(df["data_base"].astype(str), format="%Y%m", errors="coerce")
         
-        # Add derived columns
         if "nome_conglomerado_financeiro" in df.columns:
             df["tipo_banco"] = df["nome_conglomerado_financeiro"].apply(classify_bank)
         if "unidade_federacao" in df.columns:
             df["regiao"] = df["unidade_federacao"].apply(classify_region)
             df["uf_codigo"] = df["unidade_federacao"].str.upper().str.strip()
         
-        # Calculate ticket
         if "volume_operacoes" in df.columns and "numero_operacoes" in df.columns:
             df["ticket_medio"] = df["volume_operacoes"] / df["numero_operacoes"].replace(0, np.nan)
         
-        # Remove invalid rows
         df = df.dropna(subset=["volume_operacoes", "numero_operacoes", "data_base"])
         df = df[df["numero_operacoes"] > 0]
         df = df[df["volume_operacoes"] > 0]
@@ -994,7 +786,6 @@ class DataLoader:
             file_name = uploaded_file.name.lower()
             
             if file_name.endswith('.csv'):
-                # Try multiple encodings
                 for enc in ["utf-8", "latin1", "cp1252", "iso-8859-1"]:
                     try:
                         uploaded_file.seek(0)
@@ -1003,10 +794,6 @@ class DataLoader:
                         return df
                     except (UnicodeDecodeError, pd.errors.ParserError):
                         continue
-                        
-            elif file_name.endswith(('.xls', '.xlsx')):
-                return pd.read_excel(uploaded_file)
-                
         except Exception as e:
             logger.error(f"Failed to load file: {e}")
             st.error(f"❌ Erro ao carregar arquivo: {e}")
@@ -1016,16 +803,16 @@ class DataLoader:
 # ============================================================
 # GEOJSON CACHE (Fixes Brazil Map Bug)
 # ============================================================
-@st.cache_data(ttl=86400)  # Cache for 24 hours
+@st.cache_data(ttl=86400)
 def get_brazil_geojson() -> Optional[Dict]:
     """Download and cache official Brazil states GeoJSON."""
     try:
-        import urllib.request
-        response = urllib.request.urlopen(CONFIG.geojson_url, timeout=10)
+        req = Request(CONFIG.geojson_url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urlopen(req, timeout=10)
         geojson = json.loads(response.read())
         logger.info("GeoJSON loaded successfully")
         return geojson
-    except Exception as e:
+    except (URLError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load GeoJSON: {e}")
         return None
 
@@ -1043,28 +830,23 @@ class AnalyticsEngine:
         ops_tot = df["numero_operacoes"].sum()
         ticket = safe_divide(vol_tot, ops_tot)
         
-        # Evolution metrics
         evol_g = df.groupby("data_base")["volume_operacoes"].sum().reset_index().sort_values("data_base")
         evol_g["mom"] = evol_g["volume_operacoes"].pct_change() * 100
-        evol_g["yoy"] = evol_g["volume_operacoes"].pct_change(periods=12) * 100
         evol_g["ma3"] = evol_g["volume_operacoes"].rolling(3, min_periods=1).mean()
         
         mom_last = evol_g["mom"].dropna().iloc[-1] if not evol_g["mom"].dropna().empty else 0.0
-        yoy_last = evol_g["yoy"].dropna().iloc[-1] if not evol_g["yoy"].dropna().empty else 0.0
         
-        # Concentration metrics
         b_agg = df.groupby("nome_conglomerado_financeiro")["volume_operacoes"].sum()
         hhi_val = hhi(b_agg)
         cr3 = concentration_ratio(b_agg, 3)
         cr5 = concentration_ratio(b_agg, 5)
         
-        # Regional inequality
         reg_v = df.groupby("regiao")["volume_operacoes"].sum()
         gini_r = gini(reg_v)
         
         return {
             "vol_tot": vol_tot, "ops_tot": ops_tot, "ticket": ticket,
-            "evol_g": evol_g, "mom_last": mom_last, "yoy_last": yoy_last,
+            "evol_g": evol_g, "mom_last": mom_last,
             "hhi": hhi_val, "cr3": cr3, "cr5": cr5, "gini_r": gini_r,
             "n_banks": df["nome_conglomerado_financeiro"].nunique(),
             "n_uf": df["unidade_federacao"].nunique(),
@@ -1078,7 +860,6 @@ class AnalyticsEngine:
     def detect_outliers(df: pd.DataFrame, column: str = "volume_operacoes") -> Tuple[pd.DataFrame, int]:
         """Detect outliers using Isolation Forest and IQR methods."""
         try:
-            # Method 1: Isolation Forest
             features = df[[column, "numero_operacoes"]].fillna(0)
             iso_forest = IsolationForest(
                 contamination=CONFIG.outlier_contamination, 
@@ -1088,7 +869,6 @@ class AnalyticsEngine:
             df["outlier_score"] = iso_forest.fit_predict(features)
             df["is_outlier"] = df["outlier_score"] == -1
             
-            # Method 2: IQR for validation
             q1 = df[column].quantile(0.25)
             q3 = df[column].quantile(0.75)
             iqr = q3 - q1
@@ -1096,7 +876,6 @@ class AnalyticsEngine:
             upper_bound = q3 + 1.5 * iqr
             df["outlier_iqr"] = (df[column] < lower_bound) | (df[column] > upper_bound)
             
-            # Combined outlier flag
             df["is_outlier"] = df["is_outlier"] | df["outlier_iqr"]
             n_outliers = df["is_outlier"].sum()
             
@@ -1182,7 +961,6 @@ class ChartFactory:
         """Create timeline chart with tranche breakdown and forecast."""
         fig = go.Figure()
         
-        # Add tranche lines
         tipos = sorted(df["tipo_desenrola"].unique())
         for i, tp in enumerate(tipos):
             g = df[df["tipo_desenrola"] == tp].groupby("data_base")["volume_operacoes"].sum().reset_index()
@@ -1196,10 +974,8 @@ class ChartFactory:
                 hovertemplate=f"<b>Faixa {tp}</b><br>%{{x|%b/%Y}}<br>R$ %{{y:,.0f}}<extra></extra>"
             ))
         
-        # Add forecast
         forecast = AnalyticsEngine.forecast_series(evol_g, CONFIG.forecast_periods)
         if forecast:
-            # Confidence interval
             xband = list(forecast["dates"]) + list(forecast["dates"][::-1])
             yband = list(forecast["upper"]) + list(forecast["lower"][::-1])
             fig.add_trace(go.Scatter(
@@ -1209,7 +985,6 @@ class ChartFactory:
                 name="IC 95%", hoverinfo="skip"
             ))
             
-            # Forecast line
             fig.add_trace(go.Scatter(
                 x=forecast["dates"], y=forecast["forecast"],
                 mode="lines+markers", name="Projeção",
@@ -1280,7 +1055,6 @@ class ChartFactory:
         banco_agg["seg"] = banco_agg["nome_conglomerado_financeiro"].apply(classify_bank)
         banco_agg = banco_agg.nlargest(top_n, "volume")
         
-        # Color by segment
         segment_colors = {
             "Tradicional": COLORS["P1"],
             "Digital": COLORS["AZUL"],
@@ -1342,7 +1116,6 @@ class ChartFactory:
         geojson = get_brazil_geojson()
         
         if geojson:
-            # Determine feature ID key
             props = geojson["features"][0]["properties"]
             featureidkey = "properties.sigla" if "sigla" in props else "properties.name"
             
@@ -1367,7 +1140,6 @@ class ChartFactory:
             )
             return fig
         else:
-            # Fallback: bubble map
             fig = go.Figure()
             fig.add_annotation(
                 text=TEXT["map_unavailable"],
@@ -1451,16 +1223,13 @@ class ChartFactory:
             if len(cl_df) < CONFIG.min_cluster_samples:
                 return None
             
-            # Standardize features
             scaler = StandardScaler()
             feat = scaler.fit_transform(cl_df[["ops", "ticket"]])
             
-            # Determine optimal clusters (2-4)
             n_clusters = min(4, len(cl_df))
             km = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
             cl_df["cluster"] = km.fit_predict(feat)
             
-            # Add cluster labels
             cluster_stats = cl_df.groupby("cluster").agg(
                 n_bancos=("nome_conglomerado_financeiro", "count"),
                 avg_ops=("ops", "mean"),
@@ -1503,7 +1272,6 @@ class ChartFactory:
     @st.cache_data
     def create_radar_chart(hhi_val: float, cr3: float, cr5: float, gini_r: float, ticket: float) -> go.Figure:
         """Create radar chart of concentration indices."""
-        # Normalize values to 0-1 scale
         radar_data = pd.DataFrame({
             "Métrica": ["HHI", "CR3", "CR5", "Gini Regional", "Ticket Médio"],
             "Valor": [
@@ -1566,7 +1334,6 @@ class ChartFactory:
             
         fig = go.Figure()
         
-        # Normal points
         normal = df[~df["is_outlier"]]
         fig.add_trace(go.Scatter(
             x=normal["numero_operacoes"], y=normal["volume_operacoes"],
@@ -1576,7 +1343,6 @@ class ChartFactory:
             text=normal["nome_conglomerado_financeiro"]
         ))
         
-        # Outliers
         outliers = df[df["is_outlier"]]
         if not outliers.empty:
             fig.add_trace(go.Scatter(
@@ -1628,7 +1394,6 @@ class ChartFactory:
         pareto_data["acum"] = pareto_data["volume_operacoes"].cumsum() / pareto_data["volume_operacoes"].sum() * 100
         p80 = (pareto_data["acum"] <= 80).sum()
         
-        # Limit to top 30 for readability
         pareto_display = pareto_data.head(30)
         
         fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -1672,26 +1437,22 @@ class ChartFactory:
             vertical_spacing=0.08
         )
         
-        # Observed
         fig.add_trace(go.Scatter(
             x=decomposition["observed"].index, y=decomposition["observed"],
             mode="lines", name="Observado", line=dict(color=COLORS["P1"], width=1.5)
         ), row=1, col=1)
         
-        # Trend
         fig.add_trace(go.Scatter(
             x=decomposition["trend"].index, y=decomposition["trend"],
             mode="lines", name="Tendência", line=dict(color=COLORS["AMBER"], width=2)
         ), row=2, col=1)
         
-        # Seasonal
         fig.add_trace(go.Scatter(
             x=decomposition["seasonal"].index, y=decomposition["seasonal"],
             mode="lines", name="Sazonalidade", line=dict(color=COLORS["AZUL"], width=1.5),
             fill="tozeroy", fillcolor=rgba(COLORS["AZUL"], 0.2)
         ), row=3, col=1)
         
-        # Residual
         fig.add_trace(go.Scatter(
             x=decomposition["resid"].index, y=decomposition["resid"],
             mode="lines", name="Resíduo", line=dict(color=COLORS["VERM"], width=1)
@@ -1713,42 +1474,6 @@ class ExportManager:
     """Handle data and report exports."""
     
     @staticmethod
-    def create_excel_export(df: pd.DataFrame, kpis: Dict) -> bytes:
-        """Create multi-sheet Excel workbook."""
-        output = io.BytesIO()
-        
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Raw data
-            df.to_excel(writer, sheet_name='Dados Filtrados', index=False)
-            
-            # Evolution
-            kpis["evol_g"].to_excel(writer, sheet_name='Evolução', index=False)
-            
-            # Bank aggregation
-            kpis["b_agg"].to_excel(writer, sheet_name='Bancos', index=False)
-            
-            # Regional
-            kpis["reg_df"].to_excel(writer, sheet_name='Regional', index=False)
-            
-            # Summary
-            summary = pd.DataFrame({
-                "Métrica": ["Volume Total", "Operações", "Ticket Médio", "HHI", "CR3", "CR5", "Gini Regional"],
-                "Valor": [
-                    fmt_brl(kpis["vol_tot"]),
-                    fmt_num(kpis["ops_tot"]),
-                    fmt_brl(kpis["ticket"]),
-                    f"{kpis['hhi']:.0f}",
-                    f"{kpis['cr3']:.1f}%",
-                    f"{kpis['cr5']:.1f}%",
-                    f"{kpis['gini_r']:.3f}"
-                ]
-            })
-            summary.to_excel(writer, sheet_name='Resumo', index=False)
-        
-        output.seek(0)
-        return output.getvalue()
-    
-    @staticmethod
     def create_txt_report(kpis: Dict) -> str:
         """Create text summary report."""
         return f"""DESENROLA BRASIL - RELATÓRIO EXECUTIVO
@@ -1761,7 +1486,6 @@ Volume Total Renegociado: {fmt_brl(kpis['vol_tot'])}
 Total de Contratos: {fmt_num(kpis['ops_tot'])}
 Ticket Médio: {fmt_brl(kpis['ticket'])}
 Variação Mensal: {kpis['mom_last']:+.1f}%
-Variação Anual: {kpis['yoy_last']:+.1f}%
 
 MERCADO
 {'-'*50}
@@ -1799,7 +1523,6 @@ def main():
     # SIDEBAR
     # ============================================================
     with st.sidebar:
-        # Logo and title
         st.markdown(f"""
         <div style="text-align:center; padding:0.5rem 0 1rem; border-bottom:1px solid {COLORS['BORDA']}; margin-bottom:1rem;">
             <div style="font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; color:{COLORS['P1']};">🏦 {TEXT['app_title']}</div>
@@ -1807,7 +1530,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Theme and language controls
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             if st.button("☀️ Light" if T == "dark" else "🌙 Dark", use_container_width=True):
@@ -1828,7 +1550,6 @@ def main():
         
         st.markdown("---")
         
-        # Data source
         st.markdown(f"### 📂 {TEXT['data_source']}")
         
         data_source = st.radio(
@@ -1847,13 +1568,12 @@ def main():
         if data_source == "upload":
             uploaded_file = st.file_uploader(
                 "Carregar arquivo",
-                type=["csv", "xlsx", "xls"],
+                type=["csv"],
                 label_visibility="collapsed"
             )
         
         st.markdown("---")
         
-        # Load data based on source
         with st.spinner(TEXT["loading_data"]):
             if data_source == "demo":
                 raw_df = DataGenerator.generate_sample_data()
@@ -1862,7 +1582,6 @@ def main():
                 raw_df = DataLoader.load_from_file(uploaded_file)
                 st.session_state.demo_mode = False
             else:
-                # Try local file
                 try:
                     raw_df = pd.read_csv("dados_desenrola.csv", sep=";", encoding="utf-8")
                     st.session_state.demo_mode = False
@@ -1875,16 +1594,13 @@ def main():
             st.error("❌ Falha ao carregar dados.")
             st.stop()
         
-        # Validate schema
         is_valid, missing_cols = DataLoader.validate_schema(raw_df)
         if not is_valid:
             st.error(f"❌ Colunas ausentes: {', '.join(missing_cols)}")
             st.stop()
         
-        # Process data
         df = DataLoader.process_raw_data(raw_df)
         
-        # Data source indicator
         source_name = "Dados de Demonstração" if st.session_state.demo_mode else (
             uploaded_file.name if uploaded_file else "dados_desenrola.csv"
         )
@@ -1895,12 +1611,8 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # ============================================================
-        # FILTERS
-        # ============================================================
         st.markdown(f"### 🔍 {TEXT['filters']}")
         
-        # Initialize filter state
         if "filters_initialized" not in st.session_state:
             st.session_state.sel_tip = sorted(df["tipo_desenrola"].unique())
             st.session_state.sel_reg = sorted(df["regiao"].unique())
@@ -1928,7 +1640,6 @@ def main():
             key="sel_seg"
         )
         
-        # Period slider
         datas = sorted(df["data_base"].unique())
         if len(datas) > 1:
             date_labels = [pd.Timestamp(d).strftime("%m/%Y") for d in datas]
@@ -1942,7 +1653,6 @@ def main():
         else:
             d_ini = d_fim = datas[0]
         
-        # Reset button
         if st.button(f"🔄 {TEXT['reset_filters']}", use_container_width=True):
             for key in ["sel_tip", "sel_reg", "sel_seg", "filters_initialized"]:
                 if key in st.session_state:
@@ -1951,7 +1661,6 @@ def main():
         
         st.markdown("---")
         
-        # Data quality panel
         st.markdown(f"### 📋 {TEXT['data_quality']}")
         st.markdown(f"""
         <div style="background:{COLORS['CARD_GLASS']}; border-radius:12px; padding:0.8rem; border:1px solid {COLORS['BORDA']};">
@@ -1986,7 +1695,6 @@ def main():
         corr_matrix = AnalyticsEngine.compute_correlations(dff)
         seasonal = AnalyticsEngine.seasonal_decomposition(kpis["evol_g"])
     
-    # Extract KPI values
     vol_tot = kpis["vol_tot"]
     ops_tot = kpis["ops_tot"]
     ticket = kpis["ticket"]
@@ -2073,7 +1781,6 @@ def main():
     # ============================================================
     alertas = []
     
-    # MoM alerts
     if mom_last < CONFIG.mom_drop_sharp:
         alertas.append(("er", TEXT["alert_sharp_drop"].format(mom_last)))
     elif mom_last < CONFIG.mom_drop_moderate:
@@ -2083,7 +1790,6 @@ def main():
     elif mom_last > 0:
         alertas.append(("ok", TEXT["alert_stable_growth"].format(mom_last)))
     
-    # HHI alerts
     if hhi_val > CONFIG.hhi_threshold_high:
         alertas.append(("er", TEXT["alert_high_concentration"].format(CONFIG.hhi_threshold_high)))
     elif hhi_val > CONFIG.hhi_threshold_moderate:
@@ -2092,19 +1798,16 @@ def main():
     else:
         alertas.append(("ok", TEXT["alert_competitive"].format(CONFIG.hhi_threshold_moderate)))
     
-    # Gini alerts
     if gini_r > CONFIG.gini_threshold_high:
         alertas.append(("er", TEXT["alert_high_regional_inequality"].format(gini_r)))
     elif gini_r > CONFIG.gini_threshold_moderate:
         alertas.append(("wa", TEXT["alert_regional_inequality"].format(gini_r)))
     
-    # Outlier alerts
     if n_outliers > 0:
         alertas.append(("wa", TEXT["alert_outliers_detected"].format(n_outliers)))
     
-    # Seasonal pattern alert
     if seasonal:
-        alertas.append(("in", TEXT["alert_seasonal_pattern"].format("Identificado")))
+        alertas.append(("in", TEXT["alert_seasonal_pattern"]))
     
     if alertas:
         st.markdown(f"### ⚡ {TEXT['smart_alerts']}")
@@ -2118,23 +1821,19 @@ def main():
     # ============================================================
     st.markdown(f"### 🔍 {TEXT['automated_insights']}")
     
-    # Regional leader
     reg_leader = kpis["reg_df"].loc[kpis["reg_df"]["volume_operacoes"].idxmax()]
     reg_name = reg_leader["regiao"]
     reg_vol = reg_leader["volume_operacoes"]
     reg_pct = reg_vol / kpis["reg_df"]["volume_operacoes"].sum() * 100
     
-    # Area leader
     if "grande_area" in dff.columns:
         area_df = dff.groupby("grande_area")["volume_operacoes"].sum().reset_index()
         area_leader = area_df.loc[area_df["volume_operacoes"].idxmax()] if not area_df.empty else None
     else:
         area_leader = None
     
-    # Average growth
     cresc_med = evol_g["mom"].dropna().mean() if not evol_g["mom"].dropna().empty else 0.0
     
-    # Correlation insight
     if not corr_matrix.empty and "volume_operacoes" in corr_matrix.columns and "ticket_medio" in corr_matrix.columns:
         corr_val = corr_matrix.loc["volume_operacoes", "ticket_medio"]
     else:
@@ -2202,7 +1901,6 @@ def main():
             fig2 = ChartFactory.create_mom_chart(evol_g)
             st.plotly_chart(fig2, use_container_width=True)
         
-        # Heatmap
         st.markdown(f"**🔥 {TEXT['heatmap_title']}**")
         fig3 = ChartFactory.create_heatmap(dff)
         if fig3:
@@ -2210,7 +1908,6 @@ def main():
         else:
             st.info(TEXT["heatmap_unavailable"])
         
-        # Seasonal decomposition
         if seasonal:
             st.markdown(f"**📊 {TEXT['seasonal_decomposition']}**")
             fig_seasonal = ChartFactory.create_seasonal_chart(seasonal)
@@ -2229,7 +1926,6 @@ def main():
         fig5 = ChartFactory.create_treemap(dff, top_n)
         st.plotly_chart(fig5, use_container_width=True)
         
-        # Concentration metrics
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             st.markdown(f"""
@@ -2261,11 +1957,9 @@ def main():
     with tab3:
         st.markdown(f"### 🗺️ {TEXT['regional_distribution']}")
         
-        # Map
         fig_map = ChartFactory.create_brazil_map(dff)
         st.plotly_chart(fig_map, use_container_width=True)
         
-        # Regional charts
         col_r1, col_r2 = st.columns([2, 1])
         with col_r1:
             fig_bar = ChartFactory.create_regional_bar(dff)
@@ -2278,7 +1972,6 @@ def main():
     with tab4:
         st.markdown(f"### 🔬 {TEXT['advanced_analytics_title']}")
         
-        # Clustering
         fig_cluster = ChartFactory.create_cluster_chart(dff)
         if fig_cluster:
             st.plotly_chart(fig_cluster, use_container_width=True)
@@ -2288,21 +1981,17 @@ def main():
         col_a1, col_a2 = st.columns(2)
         
         with col_a1:
-            # Radar
             fig_radar = ChartFactory.create_radar_chart(hhi_val, cr3, cr5, gini_r, ticket)
             st.plotly_chart(fig_radar, use_container_width=True)
         
         with col_a2:
-            # Correlation heatmap
             fig_corr = ChartFactory.create_correlation_heatmap(corr_matrix)
             if fig_corr:
                 st.plotly_chart(fig_corr, use_container_width=True)
         
-        # Scatter
         fig_scatter = ChartFactory.create_scatter_chart(dff)
         st.plotly_chart(fig_scatter, use_container_width=True)
         
-        # Outlier chart
         fig_outlier = ChartFactory.create_outlier_chart(dff_with_outliers)
         if fig_outlier:
             st.plotly_chart(fig_outlier, use_container_width=True)
@@ -2329,7 +2018,7 @@ def main():
     st.markdown("---")
     st.markdown(f"### 📥 {TEXT['export_section']}")
     
-    col_exp1, col_exp2, col_exp3, col_exp4 = st.columns(4)
+    col_exp1, col_exp2, col_exp3 = st.columns(3)
     
     with col_exp1:
         csv_data = dff.to_csv(index=False).encode("utf-8")
@@ -2342,16 +2031,6 @@ def main():
         )
     
     with col_exp2:
-        excel_data = ExportManager.create_excel_export(dff, kpis)
-        st.download_button(
-            f"📊 {TEXT['excel_download']}",
-            excel_data,
-            file_name=f"desenrola_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    
-    with col_exp3:
         txt_report = ExportManager.create_txt_report(kpis)
         st.download_button(
             f"📝 {TEXT['report_download']}",
@@ -2361,7 +2040,7 @@ def main():
             use_container_width=True
         )
     
-    with col_exp4:
+    with col_exp3:
         json_data = json.dumps({
             "generated_at": datetime.now().isoformat(),
             "filters": {
@@ -2381,7 +2060,7 @@ def main():
             }
         }, indent=2, ensure_ascii=False)
         st.download_button(
-            "🔧 JSON (API)",
+            f"🔧 {TEXT['json_download']}",
             json_data,
             file_name=f"desenrola_{datetime.now().strftime('%Y%m%d')}.json",
             mime="application/json",
@@ -2395,7 +2074,7 @@ def main():
     <div class="footer">
         🏦 {TEXT['footer_text']}<br>
         {TEXT['footer_source']}: <a href="https://www.bcb.gov.br/estatisticas/scr" target="_blank" style="color:{COLORS['P1']};">Banco Central do Brasil (SCR)</a><br>
-        <span style="font-size:0.55rem; color:{COLORS['TXT2']};">v2.0 | Built with Streamlit & Plotly</span>
+        <span style="font-size:0.55rem; color:{COLORS['TXT2']};">v2.1 | Built with Streamlit & Plotly</span>
     </div>
     """, unsafe_allow_html=True)
 
