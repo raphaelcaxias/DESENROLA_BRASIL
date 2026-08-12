@@ -6,7 +6,6 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 import re
 import warnings
@@ -14,6 +13,7 @@ import logging
 from datetime import datetime
 import base64
 from io import BytesIO
+import os
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(level=logging.INFO)
@@ -29,11 +29,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inicializa tema
+# Inicializa tema e idioma
 if "tema" not in st.session_state:
     st.session_state.tema = "escuro"
+if "lang" not in st.session_state:
+    st.session_state.lang = "pt"  # pt ou en
 
 T = st.session_state.tema
+LANG = st.session_state.lang
 
 # ============================================================
 # PALETA PREMIUM – 2026
@@ -83,11 +86,10 @@ else:
     GRID        = "rgba(255,255,255,0.05)"
     GLOW_P1     = "rgba(63,182,140,0.3)"
 
-# Cores qualitativas para gráficos
 CORES_GRAFICOS = [P1, AMBER, VERM, AZUL, ROXO, P2, VERDE, CINZA]
 
 # ============================================================
-# CSS PREMIUM – Glassmorphism, Animações, Responsivo
+# CSS PREMIUM (mesmo do original)
 # ============================================================
 st.markdown(f"""
 <style>
@@ -106,7 +108,6 @@ st.markdown(f"""
     margin: 0 auto;
 }}
 
-/* ===== HERO ===== */
 .hero {{
     background: linear-gradient(135deg, rgba(0,168,107,0.08) 0%, rgba(0,102,204,0.05) 100%);
     backdrop-filter: blur(10px);
@@ -117,7 +118,6 @@ st.markdown(f"""
     position: relative;
     overflow: hidden;
 }}
-
 .hero::before {{
     content: '';
     position: absolute;
@@ -128,7 +128,6 @@ st.markdown(f"""
     background: radial-gradient(circle, {ACCENT_GLOW} 0%, transparent 70%);
     pointer-events: none;
 }}
-
 .hero h1 {{
     font-size: 2.5rem;
     font-weight: 800;
@@ -139,13 +138,11 @@ st.markdown(f"""
     margin-bottom: 0.25rem;
     font-family: 'Playfair Display', serif;
 }}
-
 .hero p {{
     font-size: 0.9rem;
     color: {TXT2};
     margin-bottom: 1rem;
 }}
-
 .hero-badge {{
     display: inline-block;
     background: rgba(0,168,107,0.15);
@@ -158,50 +155,9 @@ st.markdown(f"""
     margin-bottom: 0.5rem;
 }}
 
-.hero-stats {{
-    display: flex;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    flex-wrap: wrap;
-}}
-
-.hero-stat {{
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(8px);
-    border-radius: 16px;
-    padding: 0.5rem 1rem;
-    min-width: 100px;
-    text-align: center;
-}}
-
-.hero-stat-number {{
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: {P1};
-    font-family: monospace;
-}}
-
-.hero-stat-label {{
-    font-size: 0.6rem;
-    color: {TXT2};
-    text-transform: uppercase;
-}}
-
-/* ===== KPI CARDS GLASS ===== */
-.kpi-grid {{
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}}
-
-@media (max-width: 1000px) {{
-    .kpi-grid {{ grid-template-columns: repeat(2, 1fr); }}
-}}
-
-@media (max-width: 600px) {{
-    .kpi-grid {{ grid-template-columns: 1fr; }}
-}}
+.kpi-grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }}
+@media (max-width: 1000px) {{ .kpi-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
+@media (max-width: 600px) {{ .kpi-grid {{ grid-template-columns: 1fr; }} }}
 
 .kpi-card {{
     background: {CARD_GLASS};
@@ -213,7 +169,6 @@ st.markdown(f"""
     position: relative;
     overflow: hidden;
 }}
-
 .kpi-card::after {{
     content: '';
     position: absolute;
@@ -225,61 +180,19 @@ st.markdown(f"""
     transform: scaleX(0);
     transition: transform 0.3s;
 }}
-
-.kpi-card:hover::after {{
-    transform: scaleX(1);
-}}
-
+.kpi-card:hover::after {{ transform: scaleX(1); }}
 .kpi-card:hover {{
     transform: translateY(-4px);
     border-color: {P1};
     box-shadow: 0 8px 25px rgba(0,0,0,0.1);
 }}
+.kpi-icon {{ font-size: 1.5rem; margin-bottom: 0.3rem; }}
+.kpi-title {{ font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: {TXT2}; font-weight: 600; }}
+.kpi-value {{ font-size: 1.6rem; font-weight: 800; color: {TXT}; font-family: monospace; margin-top: 0.3rem; line-height: 1.2; }}
+.kpi-trend {{ font-size: 0.65rem; margin-top: 0.3rem; display: inline-block; padding: 0.15rem 0.4rem; border-radius: 20px; background: rgba(0,168,107,0.1); color: {VERDE}; }}
 
-.kpi-icon {{
-    font-size: 1.5rem;
-    margin-bottom: 0.3rem;
-}}
-
-.kpi-title {{
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: {TXT2};
-    font-weight: 600;
-}}
-
-.kpi-value {{
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: {TXT};
-    font-family: monospace;
-    margin-top: 0.3rem;
-    line-height: 1.2;
-}}
-
-.kpi-trend {{
-    font-size: 0.65rem;
-    margin-top: 0.3rem;
-    display: inline-block;
-    padding: 0.15rem 0.4rem;
-    border-radius: 20px;
-    background: rgba(0,168,107,0.1);
-    color: {VERDE};
-}}
-
-/* ===== INSIGHT CARDS ===== */
-.insight-grid {{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 1rem 0;
-}}
-
-@media (max-width: 800px) {{
-    .insight-grid {{ grid-template-columns: 1fr; }}
-}}
-
+.insight-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }}
+@media (max-width: 800px) {{ .insight-grid {{ grid-template-columns: 1fr; }} }}
 .insight-card {{
     background: {CARD_GLASS};
     backdrop-filter: blur(8px);
@@ -289,53 +202,18 @@ st.markdown(f"""
     border-left: 3px solid {P1};
     transition: all 0.3s;
 }}
+.insight-card:hover {{ transform: translateX(4px); border-color: {ACCENT}; }}
+.insight-title {{ font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: {TXT2}; margin-bottom: 0.5rem; }}
+.insight-text {{ font-size: 0.85rem; color: {TXT}; line-height: 1.4; }}
+.insight-value {{ font-size: 1.1rem; font-weight: 700; color: {P1}; margin-top: 0.5rem; }}
 
-.insight-card:hover {{
-    transform: translateX(4px);
-    border-color: {ACCENT};
-}}
-
-.insight-title {{
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: {TXT2};
-    margin-bottom: 0.5rem;
-}}
-
-.insight-text {{
-    font-size: 0.85rem;
-    color: {TXT};
-    line-height: 1.4;
-}}
-
-.insight-value {{
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: {P1};
-    margin-top: 0.5rem;
-}}
-
-/* ===== ALERTAS ===== */
-.al {{
-    padding: 0.6rem 1rem;
-    border-radius: 12px;
-    margin-bottom: 0.5rem;
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}}
+.al {{ padding: 0.6rem 1rem; border-radius: 12px; margin-bottom: 0.5rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; }}
 .al.er {{ background: rgba(220,38,38,0.1); border-left: 3px solid {VERM}; color: {VERM}; }}
 .al.wa {{ background: rgba(245,158,11,0.1); border-left: 3px solid {AMBER}; color: {AMBER}; }}
 .al.ok {{ background: rgba(0,168,107,0.1); border-left: 3px solid {VERDE}; color: {VERDE}; }}
 .al.in {{ background: rgba(59,130,246,0.1); border-left: 3px solid {AZUL}; color: {AZUL}; }}
 
-/* ===== TABS PREMIUM ===== */
-.stTabs [data-baseweb="tab-list"] {{
-    gap: 0.5rem;
-    background: transparent;
-}}
+.stTabs [data-baseweb="tab-list"] {{ gap: 0.5rem; background: transparent; }}
 .stTabs [data-baseweb="tab"] {{
     background: {CARD_GLASS};
     backdrop-filter: blur(8px);
@@ -347,41 +225,11 @@ st.markdown(f"""
     border: 1px solid {BORDA};
     transition: all 0.2s;
 }}
-.stTabs [aria-selected="true"] {{
-    background: {P1};
-    color: white;
-    border-color: {P1};
-}}
+.stTabs [aria-selected="true"] {{ background: {P1}; color: white; border-color: {P1}; }}
 
-/* ===== SIDEBAR ===== */
-section[data-testid="stSidebar"] {{
-    background: {CARD_GLASS};
-    backdrop-filter: blur(12px);
-    border-right: 1px solid {BORDA};
-}}
+section[data-testid="stSidebar"] {{ background: {CARD_GLASS}; backdrop-filter: blur(12px); border-right: 1px solid {BORDA}; }}
 
-/* ===== LOADING ===== */
-.loading-skeleton {{
-    background: linear-gradient(90deg, {BORDA} 25%, {CARD} 50%, {BORDA} 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 12px;
-    height: 200px;
-}}
-@keyframes loading {{
-    0% {{ background-position: 200% 0; }}
-    100% {{ background-position: -200% 0; }}
-}}
-
-/* ===== FOOTER ===== */
-.footer {{
-    text-align: center;
-    padding: 1.5rem 0 0.5rem;
-    margin-top: 2rem;
-    border-top: 1px solid {BORDA};
-    font-size: 0.65rem;
-    color: {TXT2};
-}}
+.footer {{ text-align: center; padding: 1.5rem 0 0.5rem; margin-top: 2rem; border-top: 1px solid {BORDA}; font-size: 0.65rem; color: {TXT2}; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -447,41 +295,91 @@ def base_layout(fig, h=440, leg=True):
     fig.update_yaxes(showgrid=True, gridcolor=GRID, color=TXT)
     return fig
 
-def export_pdf(fig, filename):
-    try:
-        img = fig.to_image(format="png", width=1200, height=600, scale=2)
-        b64 = base64.b64encode(img).decode()
-        href = f'<a href="data:image/png;base64,{b64}" download="{filename}.png">Download PNG</a>'
-        return href
-    except:
-        return None
+# ============================================================
+# GERADOR DE DADOS SINTÉTICOS (CORRIGIDO, SEM ERROS DE PROBABILIDADE)
+# ============================================================
+@st.cache_data(ttl=3600)
+def generate_sample_data(n_records=5000):
+    """Gera dados sintéticos realistas para demonstração."""
+    np.random.seed(42)
+    dates = pd.date_range("2023-07-01", "2024-12-01", freq="MS")
+    ufs = ["SP","RJ","MG","RS","PR","BA","PE","CE","PA","MA","SC","DF","GO","MT","MS","AM","ES","PB","RN","AL"]
+    bancos = [
+        "ITAU UNIBANCO - PRUDENCIAL", "BANCO BRADESCO - PRUDENCIAL", 
+        "NUBANK", "CAIXA ECONOMICA FEDERAL", "BANCO DO BRASIL", 
+        "SANTANDER", "BANCO INTER", "C6 BANK", "SICOOB", "BTG PACTUAL",
+        "BANCO PAN", "BANCO ORIGINAL", "XP INVESTIMENTOS", "BANCO SAFRA",
+        "SICREDI", "MERCADO PAGO", "PICPAY", "PAGBANK", "BANCO NEXT", "BANCO NEON"
+    ]
+    tipos = ["Faixa 1", "Faixa 2", "Faixa 3", "Faixa 4"]
+    areas = ["Crédito Pessoal", "Cartão de Crédito", "Cheque Especial", "Financiamento"]
+    
+    # pesos para distribuição realista
+    uf_weights = np.array([0.25,0.15,0.10,0.08,0.07,0.06,0.05,0.04,0.03,0.03,
+                           0.03,0.02,0.02,0.02,0.01,0.01,0.01,0.01,0.01,0.01])
+    banco_weights = np.array([0.18,0.15,0.12,0.10,0.08,0.07,0.06,0.05,0.04,0.03,
+                              0.02,0.02,0.02,0.02,0.01,0.01,0.01,0.005,0.003,0.002])
+    uf_weights = uf_weights / uf_weights.sum()
+    banco_weights = banco_weights / banco_weights.sum()
+    
+    data = []
+    for _ in range(n_records):
+        # Usa randint simples (sem probabilidades) para escolher data
+        date_idx = np.random.randint(0, len(dates))
+        date = dates[date_idx]
+        trend_factor = 1 + (date_idx / len(dates)) * 0.5
+        
+        base_volume = np.random.lognormal(mean=14, sigma=1.2)
+        ops = max(1, int(base_volume / np.random.lognormal(mean=3, sigma=0.5)))
+        volume = base_volume * np.random.uniform(0.8, 1.2)
+        
+        data.append({
+            "data_base": date.strftime("%Y%m"),
+            "unidade_federacao": np.random.choice(ufs, p=uf_weights),
+            "nome_conglomerado_financeiro": np.random.choice(bancos, p=banco_weights),
+            "tipo_desenrola": np.random.choice(tipos),
+            "grande_area": np.random.choice(areas),
+            "numero_operacoes": int(ops * trend_factor),
+            "volume_operacoes": float(volume * trend_factor)
+        })
+    df = pd.DataFrame(data)
+    logger.info(f"Generated {len(df)} synthetic records")
+    return df
 
 # ============================================================
-# CARREGAMENTO DE DADOS COM CACHE
+# CARREGAMENTO DE DADOS (COM FALLBACK)
 # ============================================================
 @st.cache_data(ttl=3600)
 def load_data():
-    for enc in ["utf-8","latin1","cp1252"]:
-        try:
-            df = pd.read_csv("dados_desenrola.csv", sep=";", encoding=enc, low_memory=False)
-            df.columns = df.columns.str.lower().str.strip()
-            for c in ["numero_operacoes","volume_operacoes"]:
-                if c in df.columns:
-                    df[c] = pd.to_numeric(df[c].astype(str).str.replace(".","",regex=False).str.replace(",",".",regex=False), errors="coerce")
-            df["data_base"] = pd.to_datetime(df["data_base"].astype(str), format="%Y%m", errors="coerce")
-            df["tipo_banco"] = df["nome_conglomerado_financeiro"].apply(class_banco)
-            df["regiao"] = df["unidade_federacao"].apply(class_regiao)
-            df = df.dropna(subset=["volume_operacoes","numero_operacoes"])
-            return df
-        except:
-            continue
-    return None
+    # Tenta carregar o arquivo CSV
+    try:
+        for enc in ["utf-8","latin1","cp1252"]:
+            try:
+                df = pd.read_csv("dados_desenrola.csv", sep=";", encoding=enc, low_memory=False)
+                df.columns = df.columns.str.lower().str.strip()
+                for c in ["numero_operacoes","volume_operacoes"]:
+                    if c in df.columns:
+                        df[c] = pd.to_numeric(df[c].astype(str).str.replace(".","",regex=False).str.replace(",",".",regex=False), errors="coerce")
+                df["data_base"] = pd.to_datetime(df["data_base"].astype(str), format="%Y%m", errors="coerce")
+                df["tipo_banco"] = df["nome_conglomerado_financeiro"].apply(class_banco)
+                df["regiao"] = df["unidade_federacao"].apply(class_regiao)
+                df = df.dropna(subset=["volume_operacoes","numero_operacoes"])
+                if len(df) > 0:
+                    return df, False  # False = dados reais
+            except:
+                continue
+        # Se falhou, gera dados sintéticos
+        df = generate_sample_data()
+        return df, True  # True = dados de demonstração
+    except Exception as e:
+        logger.error(f"Erro ao carregar dados: {e}")
+        return None, False
 
 with st.spinner("🔄 Carregando dados..."):
-    df = load_data()
+    df, is_demo = load_data()
 
 if df is None:
-    st.error("❌ Erro ao carregar 'dados_desenrola.csv'")
+    st.error("❌ Erro ao carregar dados. Verifique o arquivo 'dados_desenrola.csv'.")
     st.stop()
 
 # ============================================================
@@ -504,6 +402,14 @@ with st.sidebar:
         if st.button("🌙 Dark", use_container_width=True):
             st.session_state.tema = "escuro"
             st.rerun()
+    
+    # Opção de idioma (simples)
+    lang_options = {"pt": "🇧🇷 PT", "en": "🇺🇸 EN"}
+    new_lang = st.selectbox("Idioma", options=["pt","en"], index=0 if LANG=="pt" else 1,
+                            format_func=lambda x: lang_options[x])
+    if new_lang != LANG:
+        st.session_state.lang = new_lang
+        st.rerun()
     
     st.markdown("---")
     st.markdown("**🔍 Filtros**")
@@ -535,6 +441,7 @@ with st.sidebar:
         <div style="font-size:0.7rem; font-weight:600;">📋 Qualidade</div>
         <div style="font-size:0.65rem; color:{TXT2};">Registros: <b>{len(df):,}</b></div>
         <div style="font-size:0.65rem; color:{TXT2};">Período: {d_ini.strftime('%m/%Y')} → {d_fim.strftime('%m/%Y')}</div>
+        <div style="font-size:0.65rem; color:{TXT2}; margin-top:0.3rem;">{'🧪 Modo Demonstração' if is_demo else '📁 Dados Reais'}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -571,12 +478,13 @@ st.markdown(f"""
         <span class="hero-badge">💰 {fmt_brl(vol_tot)} renegociados</span>
         <span class="hero-badge">🏛️ {dff[COL_B].nunique()} instituições</span>
         <span class="hero-badge">🗺️ {dff['unidade_federacao'].nunique()} UFs</span>
+        {f'<span class="hero-badge">🧪 Demo</span>' if is_demo else ''}
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# KPIs PREMIUM
+# KPIs PREMIUM (mesmo do original)
 # ============================================================
 evol_g = dff.groupby("data_base")["volume_operacoes"].sum().reset_index().sort_values("data_base")
 evol_g["mom"] = evol_g["volume_operacoes"].pct_change()*100
@@ -654,7 +562,7 @@ if alertas:
             st.markdown(f'<div class="al {cls}">{msg}</div>', unsafe_allow_html=True)
 
 # ============================================================
-# INSIGHTS AUTOMÁTICOS (IA Analítica)
+# INSIGHTS AUTOMÁTICOS
 # ============================================================
 st.markdown("### 🔍 Insights Automáticos")
 
@@ -705,7 +613,7 @@ with insight_cols[2]:
     """, unsafe_allow_html=True)
 
 # ============================================================
-# TABS COM GRÁFICOS PREMIUM
+# TABS COM GRÁFICOS (mesmo do original, sem alterações)
 # ============================================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Evolução Temporal", "🏦 Concentração Bancária", "🗺️ Análise Regional", 
@@ -800,7 +708,6 @@ with tab2:
     banco_agg["seg"] = banco_agg[COL_B].apply(class_banco)
     banco_agg = banco_agg.nlargest(top_n, "volume")
     
-    # Barras horizontais premium
     fig4 = go.Figure(go.Bar(
         x=banco_agg["volume"], y=banco_agg[COL_B].str[:30], orientation="h",
         marker=dict(color=P1, line=dict(width=0)),
@@ -813,13 +720,11 @@ with tab2:
     fig4.update_xaxes(tickprefix="R$ ", tickformat=".2s")
     st.plotly_chart(fig4, use_container_width=True)
     
-    # Treemap por segmento
     fig5 = px.treemap(banco_agg, path=["seg", COL_B], values="volume", color="ticket",
                       color_continuous_scale=[P1, P2, P3], title="Treemap – Distribuição por Segmento")
     fig5.update_layout(template=TPLOTE, height=450)
     st.plotly_chart(fig5, use_container_width=True)
     
-    # Métricas de concentração
     cr3 = banco_agg.nlargest(3, "volume")["volume"].sum() / banco_agg["volume"].sum() * 100
     cr5 = banco_agg.nlargest(5, "volume")["volume"].sum() / banco_agg["volume"].sum() * 100
     gini_b = gini(banco_agg["volume"])
@@ -832,11 +737,10 @@ with tab2:
     with col_m3:
         st.markdown(f"<div class='kpi-card'><div class='kpi-title'>⚖️ Gini</div><div class='kpi-value'>{gini_b:.3f}</div><div class='kpi-sub'>desigualdade bancária</div></div>", unsafe_allow_html=True)
 
-# ---------- TAB 3: ANÁLISE REGIONAL (com Mapa do Brasil) ----------
+# ---------- TAB 3: ANÁLISE REGIONAL ----------
 with tab3:
     st.markdown("### 🗺️ Distribuição Regional")
     
-    # Mapa do Brasil (choropleth)
     try:
         uf_data = dff.groupby("unidade_federacao")["volume_operacoes"].sum().reset_index()
         uf_data.columns = ["uf", "volume"]
@@ -852,7 +756,6 @@ with tab3:
     except Exception:
         st.info("Mapa indisponível para os filtros atuais.")
     
-    # Volume e Ticket por Região
     reg_data = dff.groupby("regiao").agg(volume=("volume_operacoes","sum"), ops=("numero_operacoes","sum")).reset_index()
     reg_data["ticket"] = reg_data["volume"] / reg_data["ops"]
     reg_data["pct"] = reg_data["volume"] / reg_data["volume"].sum() * 100
@@ -867,7 +770,6 @@ with tab3:
     fig6.update_yaxes(title_text="Ticket Médio (R$)", tickprefix="R$ ", secondary_y=True, showgrid=False)
     st.plotly_chart(fig6, use_container_width=True)
     
-    # Pizza de participação
     fig7 = go.Figure(go.Pie(labels=reg_data["regiao"], values=reg_data["volume"], hole=0.5,
                             marker=dict(colors=CORES_GRAFICOS[:len(reg_data)], line=dict(color=BG, width=2)),
                             textinfo="label+percent", hovertemplate="<b>%{label}</b><br>R$ %{value:,.0f}<br>%{percent}<extra></extra>"))
@@ -875,11 +777,10 @@ with tab3:
     base_layout(fig7, h=400)
     st.plotly_chart(fig7, use_container_width=True)
 
-# ---------- TAB 4: ANÁLISE AVANÇADA (Cluster + Radar + Dispersão) ----------
+# ---------- TAB 4: ANÁLISE AVANÇADA ----------
 with tab4:
     st.markdown("### 🔬 Análises Avançadas")
     
-    # Clusterização K-Means
     try:
         cl_df = dff.groupby(COL_B).agg(ops=("numero_operacoes","sum"), vol=("volume_operacoes","sum")).reset_index()
         cl_df["ticket"] = cl_df["vol"] / cl_df["ops"]
@@ -909,7 +810,6 @@ with tab4:
     except Exception as e:
         st.warning(f"Clusterização indisponível: {e}")
     
-    # Radar de Concentração
     st.markdown("**📡 Radar de Concentração**")
     radar_data = pd.DataFrame({
         "Métrica": ["HHI", "CR3", "CR5", "Gini Regional", "Ticket Médio"],
@@ -920,7 +820,6 @@ with tab4:
     fig9.update_layout(template=TPLOTE, height=450)
     st.plotly_chart(fig9, use_container_width=True)
     
-    # Dispersão Ticket × Market Share
     sc_df = dff.groupby(COL_B).agg(vol=("volume_operacoes","sum"), ops=("numero_operacoes","sum")).reset_index()
     sc_df["ticket"] = sc_df["vol"] / sc_df["ops"]
     sc_df["ms"] = sc_df["ops"] / sc_df["ops"].sum() * 100
